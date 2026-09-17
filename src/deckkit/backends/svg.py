@@ -5,6 +5,7 @@ from xml.etree.ElementTree import Element, SubElement, tostring
 
 from ..drawables import (
     Drawable,
+    DrawableConnector,
     DrawableGroup,
     DrawableImage,
     DrawableRectangle,
@@ -22,7 +23,10 @@ def render(layout: Drawable) -> str:
     )
     SubElement(root, "rect", width="100%", height="100%", fill="white")
 
+    marker_count = 0
+
     def visit(node: Drawable, parent: Element) -> None:
+        nonlocal marker_count
         group = SubElement(parent, "g", id=node.identity)
         if isinstance(node, (DrawableText, DrawableRectangle, DrawableImage)):
             b = node.content_bounds
@@ -66,6 +70,36 @@ def render(layout: Drawable) -> str:
                 if node.fit == "contain"
                 else "xMidYMid slice",
             )
+        elif isinstance(node, DrawableConnector):
+            attributes = {
+                "x1": str(node.start.x.points),
+                "y1": str(node.start.y.points),
+                "x2": str(node.end.x.points),
+                "y2": str(node.end.y.points),
+                "stroke": node.color,
+                "stroke-width": "2",
+            }
+            for cap, attribute, orient in (
+                (node.start_cap, "marker-start", "auto-start-reverse"),
+                (node.end_cap, "marker-end", "auto"),
+            ):
+                if cap == "arrow":
+                    marker_count += 1
+                    marker_id = f"deckkit-arrow-{marker_count}"
+                    marker = SubElement(
+                        group,
+                        "marker",
+                        id=marker_id,
+                        markerWidth="6",
+                        markerHeight="6",
+                        refX="5",
+                        refY="3",
+                        orient=orient,
+                        markerUnits="strokeWidth",
+                    )
+                    SubElement(marker, "path", d="M 0 0 L 6 3 L 0 6 z", fill=node.color)
+                    attributes[attribute] = f"url(#{marker_id})"
+            SubElement(group, "line", attributes)
         elif not isinstance(node, DrawableGroup):
             raise TypeError(f"SVG cannot render {type(node).__name__}")
         for child in node.children:

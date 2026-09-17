@@ -210,10 +210,14 @@ def test_image_and_editable_shape(compiler, tmp_path, fit):
 
 def test_core_has_no_backend_imports():
     for name in (
+        "annotations",
+        "geometry",
+        "identity",
         "views",
         "semantic",
         "theme",
         "layout",
+        "layouts",
         "view_expansion",
         "drawables",
         "reconcile",

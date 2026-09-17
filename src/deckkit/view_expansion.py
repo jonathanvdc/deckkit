@@ -81,9 +81,17 @@ def expand_view(
                 if c is not None
             )
 
+            def resolve_key(key: str) -> ViewIdentity:
+                try:
+                    return keys[ScopedKey(key_scope, key)]
+                except KeyError:
+                    raise ValueError(
+                        f"Unknown key {key!r} in annotation scope {key_scope.owner}"
+                    ) from None
+
             expanded = ExpandedLayout(
                 metadata,
-                value.layout,
+                value.resolve_layout(resolve_key),
                 children,
                 value.spacing if isinstance(value, Stack) else None,
             )

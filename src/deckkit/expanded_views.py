@@ -10,6 +10,7 @@ from typing import Any, Literal
 from .drawables import (
     Bounds,
     Drawable,
+    DrawableConnector,
     DrawableGroup,
     DrawableImage,
     DrawableMetadata,
@@ -17,6 +18,7 @@ from .drawables import (
     DrawableText,
 )
 from .fonts import Font, ResolvedFont
+from .geometry import Point
 from .identity import KeyScope, ViewIdentity
 from .layout import Layout, LayoutPlan
 from .measurement import TextMetrics
@@ -207,4 +209,34 @@ class ExpandedImage(ExpandedPrimitive):
             self.mime,
             self.intrinsic_pixels,
             self.fit,
+        )
+
+
+@dataclass(frozen=True)
+class ExpandedConnector(ExpandedPrimitive):
+    color: str = tracked_field()
+    start_cap: Literal["none", "arrow"] = tracked_field()
+    end_cap: Literal["none", "arrow"] = tracked_field()
+
+    def make_drawable(
+        self,
+        plan: LayoutPlan,
+        bounds: Bounds,
+        content_bounds: Bounds,
+        metadata: DrawableMetadata,
+        children: tuple[Drawable, ...],
+    ) -> Drawable:
+        start = plan.properties.get("start")
+        end = plan.properties.get("end")
+        if not isinstance(start, Point) or not isinstance(end, Point):
+            raise TypeError("Connector must be placed by an Annotated layout")
+        return DrawableConnector(
+            self.identity,
+            bounds,
+            metadata,
+            Point(bounds.x + start.x, bounds.y + start.y),
+            Point(bounds.x + end.x, bounds.y + end.y),
+            self.color,
+            self.start_cap,
+            self.end_cap,
         )

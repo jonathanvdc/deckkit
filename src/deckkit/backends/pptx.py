@@ -8,6 +8,7 @@ from os import PathLike
 
 from ..drawables import (
     Drawable,
+    DrawableConnector,
     DrawableGroup,
     DrawableImage,
     DrawableRectangle,
@@ -18,7 +19,7 @@ from ..drawables import (
 def render(layouts: Iterable[Drawable], path: str | PathLike[str]) -> None:
     from pptx import Presentation
     from pptx.dml.color import RGBColor
-    from pptx.enum.shapes import MSO_SHAPE
+    from pptx.enum.shapes import MSO_CONNECTOR, MSO_SHAPE
     from pptx.enum.text import MSO_AUTO_SIZE
     from pptx.util import Pt
 
@@ -91,6 +92,28 @@ def render(layouts: Iterable[Drawable], path: str | PathLike[str]) -> None:
                     shape.crop_left = shape.crop_right = (1 - w / (iw * scale)) / 2
                     shape.crop_top = shape.crop_bottom = (1 - h / (ih * scale)) / 2
                 shape.name = node.identity
+            elif isinstance(node, DrawableConnector):
+                shape = slide.shapes.add_connector(
+                    MSO_CONNECTOR.STRAIGHT,
+                    Pt(node.start.x.points),
+                    Pt(node.start.y.points),
+                    Pt(node.end.x.points),
+                    Pt(node.end.y.points),
+                )
+                shape.name = node.identity
+                shape.line.color.rgb = color(node.color)
+                if node.start_cap == "arrow" or node.end_cap == "arrow":
+                    from pptx.oxml.xmlchemy import OxmlElement
+
+                    line = shape.line._get_or_add_ln()
+                    if node.start_cap == "arrow":
+                        start = OxmlElement("a:headEnd")
+                        start.set("type", "triangle")
+                        line.append(start)
+                    if node.end_cap == "arrow":
+                        end = OxmlElement("a:tailEnd")
+                        end.set("type", "triangle")
+                        line.append(end)
             elif not isinstance(node, DrawableGroup):
                 raise TypeError(f"PPTX cannot render {type(node).__name__}")
     prs.save(str(path))

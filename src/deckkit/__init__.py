@@ -69,6 +69,7 @@ __all__ += ["CompositeView", "PrimitiveView"]
 
 from .expanded_views import (
     ExpandedComponent,
+    ExpandedConnector,
     ExpandedContainer,
     ExpandedImage,
     ExpandedLayout,
@@ -82,6 +83,7 @@ from .expanded_views import (
 
 __all__ += [
     "ExpandedComponent",
+    "ExpandedConnector",
     "ExpandedContainer",
     "ExpandedImage",
     "ExpandedLayout",
@@ -127,3 +129,19 @@ __all__ += ["CompiledDeck", "Deck"]
 from .drawables import Bounds, Drawable
 
 __all__ += ["Bounds", "Drawable"]
+
+from .annotations import Anchor, Annotated, Annotation, Connector, Label
+from .geometry import Point, RelativePoint
+from .identity import KeyScope, ViewIdentity
+
+__all__ += [
+    "Anchor",
+    "Annotated",
+    "Annotation",
+    "Connector",
+    "KeyScope",
+    "Label",
+    "Point",
+    "RelativePoint",
+    "ViewIdentity",
+]

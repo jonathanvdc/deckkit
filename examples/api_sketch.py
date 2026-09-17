@@ -34,9 +34,20 @@ class PipelineSlide(Slide):
         step = context.state.get("step", 0)
         return VStack(
             Text("A simpler lowering pipeline").font("title"),
-            HStack(
-                Stage(Text("Parse"), "primary" if step == 0 else "muted").key("parse"),
-                Stage(Text("Optimize"), "primary" if step == 1 else "muted").key("opt"),
+            Annotated(
+                HStack(
+                    Stage(Text("Parse"), "primary" if step == 0 else "muted").key(
+                        "parse"
+                    ),
+                    Stage(Text("Optimize"), "primary" if step == 1 else "muted").key(
+                        "opt"
+                    ),
+                    spacing=pt(32),
+                ),
+                Connector(
+                    Anchor("parse", RelativePoint.trailing),
+                    Anchor("opt", RelativePoint.leading),
+                ),
             ),
             Text("Three passes disappear").key("annotation").transition("opacity")
             if step >= 2

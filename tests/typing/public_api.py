@@ -5,9 +5,12 @@ from collections.abc import Sequence
 from typing_extensions import assert_type
 
 from deckkit import (
+    Anchor,
+    Annotated,
     CompiledView,
     Compiler,
     CompositeView,
+    Connector,
     Context,
     EnvironmentKey,
     Layout,
@@ -17,6 +20,8 @@ from deckkit import (
     LayoutView,
     Length,
     Placement,
+    Rectangle,
+    RelativePoint,
     Text,
     Theme,
     View,
@@ -61,6 +66,16 @@ def check_api(compiler: Compiler) -> None:
     Text("Invalid").environment(CustomEnvironmentKey, "wrong")  # type: ignore[misc]
     assert_type(Metric(Text("2.7×"), Text("Throughput")).animation("smooth"), Metric)
     assert_type(CustomView().padding(), CustomView)
+    assert_type(
+        Annotated(
+            Rectangle().key("box"),
+            Connector(
+                Anchor("box", RelativePoint.leading),
+                Anchor("box", RelativePoint.trailing),
+            ),
+        ),
+        Annotated,
+    )
     policy: Layout = CustomLayout()
     result = compiler.compile_view(LayoutView(policy, text, None))
     assert_type(result, CompiledView)
