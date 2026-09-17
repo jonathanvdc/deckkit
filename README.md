@@ -70,7 +70,7 @@ from deckkit import Text, Rectangle, Compiler, pt, inch, cm
 
 heading = Text("Compiler performance").padding(pt(16))
 box = Rectangle().frame(width=inch(3), height=cm(2))
-compiler = Compiler(theme, width=inch(13 + 1/3), height=inch(7.5))
+compiler = Compiler(theme, width=inch(13 + 1 / 3), height=inch(7.5))
 ```
 
 `pt(72)`, `inch(1)` and `cm(2.54)` describe the same length. Lengths support addition,
