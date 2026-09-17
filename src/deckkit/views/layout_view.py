@@ -5,6 +5,7 @@ from typing import Callable
 
 from ..identity import ViewIdentity
 from ..layout import Layout
+from ..units import Length
 from .view import View
 
 
@@ -22,3 +23,8 @@ class LayoutView(View):
 
     def resolve_layout(self, lookup: Callable[[str], ViewIdentity]) -> Layout:
         return self.layout
+
+    @property
+    def _expanded_spacing(self) -> Length | None:
+        """Spacing metadata retained for logical reconciliation, when applicable."""
+        return None

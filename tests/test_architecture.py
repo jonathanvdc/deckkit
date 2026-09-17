@@ -86,6 +86,7 @@ def test_fixed_intrinsic_flex(compiler):
     assert b.bounds.width > pt(0)
     assert d.bounds.width.points == pytest.approx(2 * c.bounds.width.points)
     assert (d.bounds.x + d.bounds.width).points == pytest.approx(960)
+    assert result.expanded_tree.spacing == pt(10)
 
 
 def test_overflow(compiler):

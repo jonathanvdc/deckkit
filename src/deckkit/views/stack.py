@@ -26,3 +26,7 @@ class Stack(LayoutView, ABC):
         # Preserve absent slots for structural identity.
         object.__setattr__(self, "spacing", spacing)
         super().__init__(self._make_layout(), *children)
+
+    @property
+    def _expanded_spacing(self) -> Length:
+        return self.spacing

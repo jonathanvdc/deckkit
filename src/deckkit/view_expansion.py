@@ -18,7 +18,6 @@ from .views import (
     Context,
     LayoutView,
     PrimitiveView,
-    Stack,
     View,
 )
 
@@ -93,7 +92,7 @@ def expand_view(
                 metadata,
                 value.resolve_layout(resolve_key),
                 children,
-                value.spacing if isinstance(value, Stack) else None,
+                value._expanded_spacing,
             )
         elif isinstance(value, CompositeView):
             semantic = ()
