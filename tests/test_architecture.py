@@ -114,9 +114,7 @@ def test_state_and_insertion(compiler):
         for c in changes
     )
     reverse = compiler.changes(b, a)
-    assert any(
-        "key:annotation:" in c.identity and c.kind == "remove" for c in reverse
-    )
+    assert any("key:annotation:" in c.identity and c.kind == "remove" for c in reverse)
 
 
 def test_geometry_and_boundary(compiler):

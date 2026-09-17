@@ -114,9 +114,7 @@ def test_component_instances_scope_their_internal_keys(compiler):
 
     result = compiler.compile_view(VStack(KeyedContent(), KeyedContent()))
     keyed = [
-        node
-        for node in result.expanded_tree.walk()
-        if node.metadata.key == "content"
+        node for node in result.expanded_tree.walk() if node.metadata.key == "content"
     ]
 
     assert len(keyed) == 2

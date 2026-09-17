@@ -125,8 +125,7 @@ def test_keyed_children_survive_recipe_changes(font):
     ).compile_view(source)
     changes = compiler.changes(before, after)
     assert not any(
-        c.kind in ("insert", "remove") and "key:content:" in c.identity
-        for c in changes
+        c.kind in ("insert", "remove") and "key:content:" in c.identity for c in changes
     )
     assert content._modifiers == (("key", "content"),)
 
