@@ -17,6 +17,7 @@ from .drawables import (
     DrawableText,
 )
 from .fonts import Font, ResolvedFont
+from .identity import KeyScope, ViewIdentity
 from .layout import Layout, LayoutPlan
 from .measurement import TextMetrics
 from .units import Length
@@ -32,7 +33,9 @@ def tracked_field() -> Any:
 class ExpandedMetadata:
     """Compiler-owned identity and behavior shared by every expanded view."""
 
-    identity: str
+    view_identity: ViewIdentity
+    key: str | None
+    key_scope: KeyScope
     modifiers: tuple[Modifier, ...]
     animation: str | None = field(metadata={"tracked": True})
     transition: str | None = field(metadata={"tracked": True})
@@ -48,7 +51,11 @@ class ExpandedView(ABC):
 
     @property
     def identity(self) -> str:
-        return self.metadata.identity
+        return str(self.metadata.view_identity)
+
+    @property
+    def view_identity(self) -> ViewIdentity:
+        return self.metadata.view_identity
 
     @property
     def modifiers(self) -> tuple[Modifier, ...]:

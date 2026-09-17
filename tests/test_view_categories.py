@@ -107,6 +107,22 @@ def test_custom_environment_modifier_reaches_subtree(compiler):
     assert observed == [2]
 
 
+def test_component_instances_scope_their_internal_keys(compiler):
+    class KeyedContent(CompositeView):
+        def body(self, context: Context) -> View:
+            return Text("Content").key("content")
+
+    result = compiler.compile_view(VStack(KeyedContent(), KeyedContent()))
+    keyed = [
+        node
+        for node in result.expanded_tree.walk()
+        if node.metadata.key == "content"
+    ]
+
+    assert len(keyed) == 2
+    assert keyed[0].view_identity != keyed[1].view_identity
+
+
 def test_plain_view_body_is_not_implicitly_called(compiler):
     class Unsupported(View):
         def body(self, context):

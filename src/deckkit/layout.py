@@ -8,6 +8,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from .fonts import FontResolver
+from .identity import ViewIdentity
 from .measurement import TextMeasurer
 from .units import Length, pt, require_length
 
@@ -65,6 +66,7 @@ class LayoutChild(Protocol):
     """A layout's opaque child: identity, allocation weight and cached measurement."""
 
     identity: str
+    view_identity: ViewIdentity
     flex: float
 
     def measure(self, constraints: Constraints) -> LayoutPlan: ...
@@ -127,6 +129,7 @@ class _Child:
         self.node = node
         self.context = context
         self.identity = node.identity
+        self.view_identity = node.view_identity
         self.flex = next(
             (
                 modifier[1]

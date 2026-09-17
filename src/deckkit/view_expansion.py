@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import fields, is_dataclass, replace
 from typing import Any
-from urllib.parse import quote
 
 from .expanded_views import (
     ExpandedComponent,
@@ -12,6 +11,7 @@ from .expanded_views import (
     ExpandedMetadata,
     ExpandedView,
 )
+from .identity import KeyScope, ScopedKey, ViewIdentity
 from .layouts import FrameLayout, PaddingLayout, PassthroughLayout
 from .views import (
     CompositeView,
@@ -28,48 +28,59 @@ def expand_view(
     context: Context,
 ) -> ExpandedView:
     """Expand composite bodies, select theme styles and attach layout policies."""
-    keys: set[str] = set()
+    keys: dict[ScopedKey, ViewIdentity] = {}
 
     def visit(
         value: View,
-        parent: str,
+        parent: ViewIdentity,
         slot: str | int,
         context: Context,
+        key_scope: KeyScope,
         depth: int = 0,
     ) -> ExpandedView:
         if depth > 100:
             raise ValueError("Composite body recursion exceeds 100 levels")
         mods: dict[str, Any] = dict(value._modifiers)
-        typename = type(value).__module__ + "." + type(value).__qualname__
+        view_type = type(value)
+        typename = view_type.__module__ + "." + view_type.__qualname__
+        key: str | None = None
         if "key" in mods:
             key = mods["key"]
-            if key in keys:
-                raise ValueError(f"Duplicate slide key: {key!r}")
-            keys.add(key)
-            identity = f"key:{quote(key, safe='')}:{typename}"
+            reference = ScopedKey(key_scope, key)
+            if reference in keys:
+                raise ValueError(f"Duplicate key {key!r} in scope {key_scope.owner}")
+            identity = key_scope.owner.keyed(key, view_type)
+            keys[reference] = identity
         else:
-            identity = f"{parent}/{slot}:{typename}"
+            identity = parent.child(slot, view_type)
         environment = context.environment
         for modifier in value._modifiers:
             if modifier[0] == "environment":
-                key, setting = modifier[1]
-                environment = environment.setting(key, setting)
+                environment_key, setting = modifier[1]
+                environment = environment.setting(environment_key, setting)
         local_context = replace(context, environment=environment)
         animation = mods.get("animation")
         transition = mods.get("transition")
         boundary = mods.get("boundary", False)
         metadata = ExpandedMetadata(
-            identity, value._modifiers, animation, transition, boundary
+            identity,
+            key,
+            key_scope,
+            value._modifiers,
+            animation,
+            transition,
+            boundary,
         )
         expanded: ExpandedView
         if isinstance(value, PrimitiveView):
             expanded = value.expand(local_context, metadata)
         elif isinstance(value, LayoutView):
             children = tuple(
-                visit(c, identity, i, local_context, depth + 1)
+                visit(c, identity, i, local_context, key_scope, depth + 1)
                 for i, c in enumerate(value.children)
                 if c is not None
             )
+
             expanded = ExpandedLayout(
                 metadata,
                 value.layout,
@@ -88,7 +99,16 @@ def expand_view(
             expanded = ExpandedComponent(
                 metadata,
                 PassthroughLayout(),
-                (visit(body, identity, "body", local_context, depth + 1),),
+                (
+                    visit(
+                        body,
+                        identity,
+                        "body",
+                        local_context,
+                        KeyScope(identity),
+                        depth + 1,
+                    ),
+                ),
                 typename,
                 semantic,
             )
@@ -107,4 +127,5 @@ def expand_view(
                 )
         return expanded
 
-    return visit(view, "slide", 0, context)
+    root = ViewIdentity.root("slide")
+    return visit(view, root, 0, context, KeyScope(root))

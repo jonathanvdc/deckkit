@@ -18,7 +18,7 @@ from examples.api_sketch import (
 
 
 def keyed(root, key):
-    return next(n for n in root.walk() if n.identity.startswith(f"key:{key}:"))
+    return next(n for n in root.walk() if f"key:{key}:" in n.identity)
 
 
 def test_theme_changes_structure(font):
@@ -108,14 +108,14 @@ def test_state_and_insertion(compiler):
         c.identity == parse.identity and c.kind in ("insert", "remove") for c in changes
     )
     assert any(
-        c.identity.startswith("key:annotation:")
+        "key:annotation:" in c.identity
         and c.kind == "insert"
         and c.transition == "opacity"
         for c in changes
     )
     reverse = compiler.changes(b, a)
     assert any(
-        c.identity.startswith("key:annotation:") and c.kind == "remove" for c in reverse
+        "key:annotation:" in c.identity and c.kind == "remove" for c in reverse
     )
 
 

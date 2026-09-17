@@ -120,4 +120,4 @@ def test_modifier_overflow_has_component_identity(compiler):
         compiler.compile_view(
             Text("No space").key("title").frame(width=pt(1)).padding(pt(5))
         )
-    assert error.value.identity.startswith("key:title:")
+    assert "key:title:" in error.value.identity
