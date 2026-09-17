@@ -47,7 +47,9 @@ class PipelineSlide(Slide):
                         "opt"
                     ),
                     spacing=pt(32),
-                ).padding(pt(36)),
+                    # Reserve enough room for the label centered 24 pt below the stage.
+                    # Text metrics vary slightly across supported fonts and platforms.
+                ).padding(pt(44)),
                 Connector(
                     Anchor("parse", RelativePoint.trailing),
                     Anchor("opt", RelativePoint.leading),
