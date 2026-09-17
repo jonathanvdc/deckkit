@@ -69,12 +69,14 @@ default to presenter advance; timed steps use `AfterPrevious` or `WithPrevious`.
 ```python
 from deckkit import Deck, Slide, SlideTimeline
 
+
 class PipelineSlide(Slide):
     def timeline(self):
         return SlideTimeline.steps(3)
 
     def body(self, context):
         return pipeline_for(context.state["step"])
+
 
 compiled = compiler.compile_deck(Deck([PipelineSlide()]))
 pptx.render(compiled, "animated.pptx")
