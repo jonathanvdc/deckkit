@@ -7,19 +7,18 @@ from dataclasses import dataclass, field, replace
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Protocol, cast
 
+from .fonts import FontResolver
+from .measurement import TextMeasurer
 from .units import Length, pt, require_length
 
 if TYPE_CHECKING:
-    from .view_expansion import ExpandedView
+    from .expanded_views import ExpandedView
 
 from .drawables import (
     Bounds,
     Drawable,
     DrawableGroup,
-    DrawableImage,
     DrawableMetadata,
-    DrawableRectangle,
-    DrawableText,
 )
 
 
@@ -38,6 +37,14 @@ class Constraints:
             and pt(0) <= self.min_height <= self.max_height
         ):
             raise ValueError("Constraints must be nonnegative and ordered")
+
+
+@dataclass(frozen=True)
+class LayoutContext:
+    """Services available while views respond to layout proposals."""
+
+    measurer: TextMeasurer
+    font_resolver: FontResolver
 
 
 class LayoutOverflow(ValueError):
@@ -92,7 +99,10 @@ class Layout(Protocol):
     """Policies measure children and return placements; they never create layout nodes."""
 
     def measure(
-        self, constraints: Constraints, children: Sequence[LayoutChild]
+        self,
+        constraints: Constraints,
+        children: Sequence[LayoutChild],
+        context: LayoutContext,
     ) -> LayoutPlan: ...
 
 
@@ -113,8 +123,9 @@ def checked(plan: LayoutPlan, c: Constraints, identity: str | None) -> LayoutPla
 
 
 class _Child:
-    def __init__(self, node: ExpandedView) -> None:
+    def __init__(self, node: ExpandedView, context: LayoutContext) -> None:
         self.node = node
+        self.context = context
         self.identity = node.identity
         self.flex = next(
             (
@@ -124,13 +135,15 @@ class _Child:
             ),
             0.0,
         )
-        self.children = tuple(_Child(child) for child in node.children)
+        self.children = tuple(_Child(child, context) for child in node.children)
         self._cache: dict[Constraints, LayoutPlan] = {}
 
     def measure(self, constraints: Constraints) -> LayoutPlan:
         if constraints not in self._cache:
             try:
-                plan = self.node.layout.measure(constraints, self.children)
+                plan = self.node.layout.measure(
+                    constraints, self.children, self.context
+                )
                 plan = checked(plan, constraints, self.identity)
                 for placement in plan.placements:
                     if not any(placement.child is child for child in self.children):
@@ -159,60 +172,38 @@ class _Child:
         return self._cache[constraints]
 
     def place(self, plan: LayoutPlan, x: Length = pt(0), y: Length = pt(0)) -> Drawable:
-        props = dict(self.node.props, **plan.properties)
         bounds = Bounds(x, y, plan.width, plan.height)
         metadata = DrawableMetadata(
-            props.get("animation"),
-            props.get("transition"),
-            props.get("boundary", False),
+            self.node.animation,
+            self.node.transition,
+            self.node.animation_boundary,
         )
-        dx, dy = props.get("content_offset", (pt(0), pt(0)))
-        w, h = props.get("content_size", (plan.width, plan.height))
+        dx, dy = plan.properties.get("content_offset", (pt(0), pt(0)))
+        w, h = plan.properties.get("content_size", (plan.width, plan.height))
         content_bounds = Bounds(x + dx, y + dy, w, h)
-        if self.node.kind == "text":
-            return DrawableText(
-                self.identity,
-                bounds,
-                metadata,
-                content_bounds,
-                props["text"],
-                props["color"],
-                props["font"],
-                props["requested_font"],
-                props["font_size"],
-                props["metrics"],
+        children = tuple(
+            cast(_Child, placement.child).place(
+                placement.plan, x + placement.x, y + placement.y
             )
-        if self.node.kind == "rectangle":
-            return DrawableRectangle(
-                self.identity, bounds, metadata, content_bounds, props["color"]
-            )
-        if self.node.kind == "image":
-            return DrawableImage(
-                self.identity,
-                bounds,
-                metadata,
-                content_bounds,
-                props["data"],
-                props["mime"],
-                props["intrinsic"],
-                props["fit"],
-            )
-        return DrawableGroup(
-            self.identity,
+            for placement in plan.placements
+        )
+        return self.node.make_drawable(
+            plan,
             bounds,
+            content_bounds,
             metadata,
-            tuple(
-                cast(_Child, p.child).place(p.plan, x + p.x, y + p.y)
-                for p in plan.placements
-            ),
+            children,
         )
 
 
 class LayoutEngine:
     """Coordinate measurement, validate plans, then materialize the layout once."""
 
+    def __init__(self, context: LayoutContext) -> None:
+        self.context = context
+
     def measure(self, node: ExpandedView, constraints: Constraints) -> Drawable:
-        child = _Child(node)
+        child = _Child(node, self.context)
         return child.place(child.measure(constraints))
 
     def layout_view(

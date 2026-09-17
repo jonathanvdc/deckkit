@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from typing import Any, Literal, TypeVar
 
 from .drawables import Bounds, Drawable
-from .view_expansion import ExpandedView
+from .expanded_views import ExpandedView
 
 
 @dataclass(frozen=True)
@@ -21,6 +21,22 @@ class Change:
 
 
 TreeT = TypeVar("TreeT", ExpandedView, Drawable)
+
+
+def _properties(node: ExpandedView) -> dict[str, Any]:
+    tracked = {
+        item.name: getattr(node.metadata, item.name)
+        for item in fields(node.metadata)
+        if item.metadata.get("tracked", False)
+    }
+    tracked.update(
+        {
+            item.name: getattr(node, item.name)
+            for item in fields(node)
+            if item.metadata.get("tracked", False)
+        }
+    )
+    return tracked
 
 
 def _index(root: TreeT) -> tuple[dict[str, TreeT], dict[str, str | None]]:
@@ -49,8 +65,8 @@ def reconcile(before: ExpandedView, after: ExpandedView) -> tuple[Change, ...]:
                 Change(
                     key,
                     "insert",
-                    after=dict(b.props),
-                    transition=b.props.get("transition"),
+                    after=_properties(b),
+                    transition=b.transition,
                 )
             )
         elif b is None:
@@ -58,19 +74,23 @@ def reconcile(before: ExpandedView, after: ExpandedView) -> tuple[Change, ...]:
                 Change(
                     key,
                     "remove",
-                    before=dict(a.props),
-                    transition=a.props.get("transition"),
+                    before=_properties(a),
+                    transition=a.transition,
                 )
             )
         else:
-            if a.props != b.props or a.modifiers != b.modifiers:
+            if (
+                type(a) is not type(b)
+                or _properties(a) != _properties(b)
+                or a.modifiers != b.modifiers
+            ):
                 changes.append(
                     Change(
                         key,
                         "properties",
-                        dict(a.props),
-                        dict(b.props),
-                        b.props.get("animation"),
+                        _properties(a),
+                        _properties(b),
+                        b.animation,
                     )
                 )
             if op[key] != np[key]:

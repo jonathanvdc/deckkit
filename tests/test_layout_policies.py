@@ -4,7 +4,15 @@ from dataclasses import dataclass
 
 import pytest
 
-from deckkit import LayoutOverflow, LayoutPlan, LayoutView, Placement, Rectangle, Text
+from deckkit import (
+    LayoutContext,
+    LayoutOverflow,
+    LayoutPlan,
+    LayoutView,
+    Placement,
+    Rectangle,
+    Text,
+)
 from deckkit.backends import pptx, svg
 from deckkit.layout import Constraints, LayoutEngine
 from deckkit.layouts import StackLayout
@@ -18,7 +26,7 @@ class DiagonalLayout:
 
     inset: Length = pt(12)
 
-    def measure(self, constraints, children):
+    def measure(self, constraints, children, context):
         placements = []
         width = height = pt(0)
         for i, child in enumerate(children):
@@ -68,13 +76,13 @@ def test_placement_does_not_remeasure(compiler):
 
     measurer = CountingMeasurer()
     view = LayoutView(DiagonalLayout(), Text("Once"))
-    tree = expand_view(
-        view, Context(State(), compiler.environment), measurer, compiler.font_resolver
-    )
-    LayoutEngine().layout_view(tree)
+    tree = expand_view(view, Context(State(), compiler.environment))
+    assert measurer.calls == 0
+    context = LayoutContext(measurer, compiler.font_resolver)
+    LayoutEngine(context).layout_view(tree)
     assert measurer.calls == 1
     # Cache belongs to this compilation, not mutable global layout state.
-    LayoutEngine().layout_view(tree)
+    LayoutEngine(context).layout_view(tree)
     assert measurer.calls == 2
 
 
@@ -96,7 +104,7 @@ def test_vertical_flex_allocation(compiler):
 
 def test_bad_custom_placement_is_diagnosed(compiler):
     class BadLayout:
-        def measure(self, c, children):
+        def measure(self, c, children, context):
             plan = children[0].measure(c)
             return LayoutPlan(
                 plan.width, plan.height, (Placement(children[0], plan, pt(20), pt(0)),)

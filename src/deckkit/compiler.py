@@ -4,13 +4,14 @@ from dataclasses import dataclass
 
 from .deck import Deck
 from .drawables import Drawable
+from .expanded_views import ExpandedView
 from .fonts import FontResolver, SystemFontResolver
-from .layout import LayoutEngine
+from .layout import LayoutContext, LayoutEngine
 from .measurement import PillowMeasurer, TextMeasurer
 from .reconcile import Change, reconcile, with_geometry
 from .theme import Theme
 from .units import Length, pt, require_length
-from .view_expansion import ExpandedView, expand_view
+from .view_expansion import expand_view
 from .views import Context, Environment, State, View
 
 
@@ -54,17 +55,17 @@ class Compiler:
         self.environment = Environment(theme)
         self.width, self.height = width, height
         self.measurer = measurer if measurer is not None else PillowMeasurer()
-        self.layout_engine = LayoutEngine()
         self.font_resolver = (
             font_resolver if font_resolver is not None else SystemFontResolver()
+        )
+        self.layout_engine = LayoutEngine(
+            LayoutContext(self.measurer, self.font_resolver)
         )
 
     def compile_view(self, view: View, state: State | None = None) -> CompiledView:
         expanded_tree = expand_view(
             view,
             Context(state if state is not None else State(), self.environment),
-            self.measurer,
-            self.font_resolver,
         )
         return CompiledView(
             expanded_tree,

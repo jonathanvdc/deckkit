@@ -40,4 +40,4 @@ target-version = "py39"
 
 [tool.ruff.lint.flake8-bugbear]
 # These factories return immutable Length values and are safe as defaults.
-extend-immutable-calls = ["deckkit.units.pt", "deckkit.units.inch", "deckkit.units.cm", "pt", "inch", "cm"]
+extend-immutable-calls = ["deckkit.units.pt", "deckkit.units.inch", "deckkit.units.cm", "deckkit.expanded_views.tracked_field", "pt", "inch", "cm", "tracked_field"]

@@ -3,6 +3,7 @@ from .layout import (
     Constraints,
     Layout,
     LayoutChild,
+    LayoutContext,
     LayoutOverflow,
     LayoutPlan,
     Placement,
@@ -11,6 +12,9 @@ from .theme import TextStyle, Theme
 from .views import (
     Context,
     Environment,
+    EnvironmentKey,
+    FontRoleKey,
+    ForegroundStyleKey,
     HStack,
     Image,
     LayoutView,
@@ -29,6 +33,9 @@ __all__ = [
     "Constraints",
     "Context",
     "Environment",
+    "EnvironmentKey",
+    "FontRoleKey",
+    "ForegroundStyleKey",
     "HStack",
     "Image",
     "LayoutOverflow",
@@ -43,7 +50,14 @@ __all__ = [
     "ZStack",
 ]
 
-__all__ += ["Layout", "LayoutChild", "LayoutPlan", "LayoutView", "Placement"]
+__all__ += [
+    "Layout",
+    "LayoutChild",
+    "LayoutContext",
+    "LayoutPlan",
+    "LayoutView",
+    "Placement",
+]
 
 from .units import Length, cm, inch, pt
 
@@ -52,6 +66,32 @@ __all__ += ["Length", "cm", "inch", "pt"]
 from .views import CompositeView, PrimitiveView
 
 __all__ += ["CompositeView", "PrimitiveView"]
+
+from .expanded_views import (
+    ExpandedComponent,
+    ExpandedContainer,
+    ExpandedImage,
+    ExpandedLayout,
+    ExpandedMetadata,
+    ExpandedPrimitive,
+    ExpandedRectangle,
+    ExpandedText,
+    ExpandedView,
+    tracked_field,
+)
+
+__all__ += [
+    "ExpandedComponent",
+    "ExpandedContainer",
+    "ExpandedImage",
+    "ExpandedLayout",
+    "ExpandedMetadata",
+    "ExpandedPrimitive",
+    "ExpandedRectangle",
+    "ExpandedText",
+    "ExpandedView",
+    "tracked_field",
+]
 
 from .fonts import (
     Font,

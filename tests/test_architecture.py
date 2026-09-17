@@ -7,6 +7,7 @@ from xml.etree import ElementTree as ET
 import pytest
 from deckkit import *
 from deckkit.measurement import PillowMeasurer
+from deckkit.layouts import OverlayLayout, StackLayout
 from deckkit.backends import svg, pptx
 from examples.api_sketch import (
     MetricsSlide,
@@ -30,12 +31,17 @@ def test_theme_changes_structure(font):
         EditorialTheme.from_font(Font("Test Font")),
         font_resolver=FileFontResolver({Font("Test Font"): font}),
     ).compile_view(source)
-    assert any(n.kind == "hstack" for n in a.expanded_tree.walk())
-    assert any(n.kind == "zstack" for n in b.expanded_tree.walk())
-    assert all(
-        n.kind in {"component", "text", "rectangle", "vstack", "hstack", "zstack"}
+    assert any(
+        isinstance(n, ExpandedLayout)
+        and isinstance(n.layout, StackLayout)
+        and n.layout.axis == "horizontal"
+        for n in a.expanded_tree.walk()
+    )
+    assert any(
+        isinstance(n, ExpandedLayout) and isinstance(n.layout, OverlayLayout)
         for n in b.expanded_tree.walk()
     )
+    assert all(isinstance(n, ExpandedView) for n in b.expanded_tree.walk())
     assert "BeforeAfter" not in Path("src/deckkit/backends/svg.py").read_text()
 
 

@@ -12,6 +12,7 @@ import pytest
 from deckkit import (
     Compiler,
     Context,
+    ExpandedText,
     HStack,
     Rectangle,
     Text,
@@ -26,7 +27,7 @@ from deckkit.backends import pptx, svg
 
 def texts(compilation):
     return [
-        n.props["text"] for n in compilation.expanded_tree.walk() if n.kind == "text"
+        n.text for n in compilation.expanded_tree.walk() if isinstance(n, ExpandedText)
     ]
 
 

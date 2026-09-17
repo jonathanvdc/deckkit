@@ -2,7 +2,16 @@ from __future__ import annotations
 
 import pytest
 
-from deckkit import Compiler, FileFontResolver, Font, Text, TextStyle, Theme, pt
+from deckkit import (
+    Compiler,
+    EnvironmentKey,
+    FileFontResolver,
+    Font,
+    Text,
+    TextStyle,
+    Theme,
+    pt,
+)
 
 
 def test_theme_requires_color_and_typography():
@@ -34,3 +43,16 @@ def test_custom_theme_needs_no_clarity_state(font):
     assert result.drawable.children[0].color == "#123456"
     assert result.drawable.children[0].font_size == pt(18)
     assert not hasattr(theme, "typography")
+
+
+def test_environment_values_are_typed_immutable_overrides(compiler):
+    class DensityKey(EnvironmentKey[int]):
+        @classmethod
+        def default(cls) -> int:
+            return 1
+
+    environment = compiler.environment
+    derived = environment.setting(DensityKey, 2)
+
+    assert environment.get(DensityKey) == 1
+    assert derived.get(DensityKey) == 2

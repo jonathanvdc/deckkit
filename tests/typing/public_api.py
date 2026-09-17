@@ -9,8 +9,10 @@ from deckkit import (
     Compiler,
     CompositeView,
     Context,
+    EnvironmentKey,
     Layout,
     LayoutChild,
+    LayoutContext,
     LayoutPlan,
     LayoutView,
     Length,
@@ -29,11 +31,20 @@ from deckkit.views.semantic import Metric
 
 class CustomLayout:
     def measure(
-        self, constraints: Constraints, children: Sequence[LayoutChild]
+        self,
+        constraints: Constraints,
+        children: Sequence[LayoutChild],
+        context: LayoutContext,
     ) -> LayoutPlan:
         child = children[0]
         plan = child.measure(constraints)
         return LayoutPlan(plan.width, plan.height, (Placement(child, plan),))
+
+
+class CustomEnvironmentKey(EnvironmentKey[int]):
+    @classmethod
+    def default(cls) -> int:
+        return 0
 
 
 class CustomView(CompositeView):
@@ -43,8 +54,11 @@ class CustomView(CompositeView):
 
 
 def check_api(compiler: Compiler) -> None:
+    assert_type(compiler.environment.get(CustomEnvironmentKey), int)
     text = Text("Hello").font("title").padding().frame(width=pt(100)).key("title")
     assert_type(text, Text)
+    assert_type(Text("Custom").environment(CustomEnvironmentKey, 1), Text)
+    Text("Invalid").environment(CustomEnvironmentKey, "wrong")  # type: ignore[misc]
     assert_type(Metric(Text("2.7×"), Text("Throughput")).animation("smooth"), Metric)
     assert_type(CustomView().padding(), CustomView)
     policy: Layout = CustomLayout()

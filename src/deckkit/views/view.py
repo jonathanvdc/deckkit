@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 from copy import copy
-from typing import Literal, Optional, Union
+from typing import Any, Literal, Optional, TypeVar, Union
 
 from typing_extensions import Self
 
+from ..context import EnvironmentKey, FontRoleKey, ForegroundStyleKey
 from ..units import Length, pt, require_length
+
+T = TypeVar("T")
 
 # Tagged tuples preserve the relationship between modifier names and payloads.
 Modifier = Union[
-    tuple[Literal["key", "font", "color", "animation", "transition"], str],
+    tuple[Literal["key", "animation", "transition"], str],
+    tuple[Literal["environment"], tuple[type[EnvironmentKey[Any]], Any]],
     tuple[Literal["padding"], Length],
     tuple[Literal["flex"], float],
     tuple[Literal["frame"], tuple[Optional[Length], Optional[Length]]],
@@ -30,11 +34,14 @@ class View:
     def key(self, value: str | int) -> Self:
         return self._with(("key", str(value)))
 
+    def environment(self, key: type[EnvironmentKey[T]], value: T) -> Self:
+        return self._with(("environment", (key, value)))
+
     def font(self, role: str) -> Self:
-        return self._with(("font", role))
+        return self.environment(FontRoleKey, role)
 
     def foreground_style(self, style: str) -> Self:
-        return self._with(("color", style))
+        return self.environment(ForegroundStyleKey, style)
 
     def padding(self, amount: Length = pt(16)) -> Self:
         require_length(amount)
