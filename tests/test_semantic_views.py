@@ -1,28 +1,26 @@
 from __future__ import annotations
 
-from deckkit import Font, FileFontResolver
-
-
-from examples.themes import EditorialTheme
-
 from dataclasses import dataclass
 
 import pytest
 
 from deckkit import (
+    ClarityTheme,
     Compiler,
     Context,
     ExpandedText,
+    FileFontResolver,
+    Font,
     HStack,
     Rectangle,
     Text,
-    ClarityTheme,
     View,
     VStack,
     pt,
 )
-from deckkit.views.semantic import BeforeAfter, Metric, SemanticView, Stage
 from deckkit.backends import pptx, svg
+from deckkit.views.semantic import BeforeAfter, Metric, SemanticView, Stage
+from examples.themes import EditorialTheme
 
 
 def texts(compilation):
@@ -79,7 +77,9 @@ def test_rich_content_in_every_semantic_slot(font, tmp_path):
         }
         assert "Less work" in svg.render(result.drawable)
         output = tmp_path / f"rich-{theme_type.__name__}.pptx"
-        pptx.render([result.drawable], output)
+        from deckkit import CompiledDeck
+
+        pptx.render(CompiledDeck.from_views(result), output)
         assert any(
             s.has_text_frame and s.text == "Less work"
             for s in Presentation(output).slides[0].shapes

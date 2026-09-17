@@ -1,16 +1,16 @@
 # deckkit
 
 Experimental declarative Python presentation framework. Author composed views, compile
-constrained layout into a scene, then export that scene to SVG or editable static PowerPoint.
+constrained layout into a scene, then export that scene to SVG or editable PowerPoint.
 
 ```python
-from deckkit import Compiler, ClarityTheme, Font
+from deckkit import Compiler, ClarityTheme, Deck, Font
 from examples.api_sketch import MetricsSlide
 from deckkit.backends import pptx
 
 compiler = Compiler(ClarityTheme.from_font(Font("Aptos")))
-result = compiler.compile_view(MetricsSlide())
-pptx.render([result.drawable], "metrics.pptx")
+compiled = compiler.compile_deck(Deck([MetricsSlide()]))
+pptx.render(compiled, "metrics.pptx")
 ```
 
 ## Run the prototype
@@ -31,16 +31,16 @@ recognize DejaVu Sans on Linux and Arial on Windows; override with `DECKKIT_FONT
 
 The example deck and supplementary previews demonstrate composition, two structural theme recipes,
 changing emphasis, insertion and layout-driven resizing. Outputs are in `output/`.
-PPTX uses editable native text, rectangles and images. Each state is a separate slide;
-animation/transition intent is recorded in `changes.json`, not lowered into PPTX timing.
+PPTX uses editable native text, rectangles and images. Explicit state sequences compile
+to native PowerPoint build timing; static SVG continues to represent one selected state.
 
 Start with [API examples](examples/api_sketch.py) and [design decisions](docs/design.md).
 The public API is provisional. State snapshots accept independent named inputs. Modifiers
 copy values; order matters. Explicit keys are slide-global and must be unique.
 
 Current limits: whitespace wrapping, named fonts per typography role, no font fallback,
-no automatic text shrinking, no Grid/media runtime, no native animation lowering, and
-no PowerPoint grouping yet. Geometry is shared by both backends, but font rendering
+no automatic text shrinking, no Grid/media runtime, a deliberately small native animation
+subset, and no PowerPoint grouping yet. Geometry is shared by both backends, but font rendering
 and baseline placement still require validation in PowerPoint. Text is editable and
 prewrapped; fonts are not embedded. Image payloads are stored in the resolved scene.
 
@@ -59,6 +59,48 @@ Application state and extensible property mappings intentionally accept arbitrar
 values. Built-in modifier payloads use a tagged union. HarfBuzz's missing typing
 metadata is isolated with a module-specific override; python-pptx's untyped color
 factory has a single local exception. Core type errors are not suppressed globally.
+
+
+## Presentation builds
+
+Animation uses typed values and explicit state boundaries stored on each slide. Steps
+default to presenter advance; timed steps use `AfterPrevious` or `WithPrevious`.
+
+```python
+from deckkit import Deck, Slide, SlideTimeline
+
+class PipelineSlide(Slide):
+    def timeline(self):
+        return SlideTimeline.steps(3)
+
+    def body(self, context):
+        return pipeline_for(context.state["step"])
+
+compiled = compiler.compile_deck(Deck([PipelineSlide()]))
+pptx.render(compiled, "animated.pptx")
+```
+
+`SlideTimeline.steps(3)` creates `State(step=0)` through `State(step=2)`, advancing
+on each presenter click. `SlideTimeline.advance_through(...)` accepts arbitrary state snapshots.
+For custom timing or per-step animation, construct `SlideTimeline(initial, subsequent)` with
+explicit `TimelineStep` values. Static slides inherit the default one-state timeline.
+
+Views opt into layout animation and insertion/removal transitions with typed modifiers:
+
+```python
+VStack(
+    Text("Optional").key("optional").transition(Transition.fade())
+    if context.state.get("show", True)
+    else None,
+    Text("Persistent").key("persistent"),
+).animation(Animation.smooth())
+```
+
+The shared animation program retains identities, endpoint geometry, triggers, effects,
+and shape lifetimes without depending on PresentationML. PPTX currently lowers appear,
+disappear, fade, positional reflow, presenter advance, and timed builds. Unsupported
+content changes fail by default. Authors can explicitly request a crossfade or discrete
+fallback. Rasterization is not a fallback.
 
 
 ## Physical units
@@ -209,14 +251,18 @@ from deckkit import Deck
 
 deck = Deck([MetricsSlide(), ComparisonSlide()])
 compiled = compiler.compile_deck(deck)
-pptx.render(compiled.drawables, "presentation.pptx")
+pptx.render(compiled, "presentation.pptx")
 ```
 
-`CompiledDeck.slides` retains each slide's logical tree and scene for reconciliation;
-`.drawables` feeds exporters directly. `compile_deck(deck, state=...)` shares the supplied
-snapshot across slides without treating slide position as a state source. Keys remain
-scoped per slide. Empty decks compile to an empty result; PPTX export still requires
-at least one scene.
+`CompiledDeck.slides` contains one `CompiledSlide` per authored slide. Each compiled slide
+retains its initial scene, step endpoint scenes, and backend-neutral animation program.
+`compile_deck(deck, state=...)` overlays slide timeline state on a shared snapshot without
+treating slide position as a state source. Keys remain scoped per slide. Empty decks compile
+to an empty result; PPTX export still requires at least one slide.
+
+There is only one deck compilation and PPTX export path. To materialize builds as ordinary
+static slides for a backend without animation support, call `compiled.expanding_steps()`
+before export. SVG renders a selected endpoint such as `slide.initial.drawable` directly.
 
 The example runner now exports a four-slide deck to `prototype.pptx`. Additional
 SVG previews demonstrate theme changes and state transitions separately from the
@@ -231,10 +277,11 @@ one evaluation under the compiler's environment and canvas. It works for both
 slides and ordinary views. It represents one selected state, not an animation or
 backend document, and does not store the source state/environment.
 
-`Compiler.compile_deck(deck, state=None)` returns `CompiledDeck`. Its `slides` are
-ordered `CompiledView` results; `scenes` provides their scenes for export. There
-is no separate compiled-slide type. These names replace `Compilation`,
-`DeckCompilation`, `.tree` and `Compiler.compile()` in the prototype API.
+`Compiler.compile_slide(slide, state=None)` returns `CompiledSlide`, containing an initial
+`CompiledView`, one additional state per `TimelineStep`, and the resolved animation program.
+`Compiler.compile_deck(deck, state=None)` returns an ordered `CompiledDeck` of those logical
+slides. Static slides use the same representation with no steps. These names replace the
+earlier separate sequence/static compilation paths.
 
 
 The view-expansion stage is named explicitly: `view_expansion.expand_view()`
@@ -250,7 +297,7 @@ The final rendering representation is a hierarchy of `Drawable` objects with no
 outer wrapper. `CompiledView.drawable` is a canvas-sized root group at `(0, 0)`;
 its first child retains the compiled content's own bounds and identity. Exporters
 use the root bounds as canvas dimensions and traverse its children for drawing.
-`CompiledDeck.drawables` provides those roots in slide order. The synthetic root's
+`CompiledSlide.states` provides those roots at each step boundary. The synthetic root's
 reserved `canvas` identity is distinct from source-view identities and preserves
 canvas geometry for comparisons without stretching the content to fill it.
 

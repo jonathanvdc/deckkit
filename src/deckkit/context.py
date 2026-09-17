@@ -46,6 +46,10 @@ class State(Mapping[str, Any]):
     def __len__(self) -> int:
         return len(self._values)
 
+    def merging(self, overrides: State) -> State:
+        """Return a snapshot in which slide-local values override shared values."""
+        return State(**{**self._values, **overrides._values})
+
 
 @dataclass(frozen=True)
 class Environment:

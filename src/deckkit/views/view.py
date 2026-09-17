@@ -7,6 +7,7 @@ from typing import Any, Literal, Optional, TypeVar, Union
 
 from typing_extensions import Self
 
+from ..animation import Animation, Transition
 from ..context import EnvironmentKey, FontRoleKey, ForegroundStyleKey
 from ..units import Length, pt, require_length
 
@@ -14,7 +15,9 @@ T = TypeVar("T")
 
 # Tagged tuples preserve the relationship between modifier names and payloads.
 Modifier = Union[
-    tuple[Literal["key", "animation", "transition"], str],
+    tuple[Literal["key"], str],
+    tuple[Literal["animation"], Animation],
+    tuple[Literal["transition"], Transition],
     tuple[Literal["environment"], tuple[type[EnvironmentKey[Any]], Any]],
     tuple[Literal["padding"], Length],
     tuple[Literal["flex"], float],
@@ -60,11 +63,15 @@ class View:
             raise ValueError("Flex weight must be positive")
         return self._with(("flex", float(weight)))
 
-    def animation(self, name: str) -> Self:
-        return self._with(("animation", name))
+    def animation(self, animation: Animation) -> Self:
+        if not isinstance(animation, Animation):
+            raise TypeError("animation() requires an Animation value")
+        return self._with(("animation", animation))
 
-    def transition(self, name: str) -> Self:
-        return self._with(("transition", name))
+    def transition(self, transition: Transition) -> Self:
+        if not isinstance(transition, Transition):
+            raise TypeError("transition() requires a Transition value")
+        return self._with(("transition", transition))
 
     def animation_boundary(self) -> Self:
         return self._with(("boundary", True))

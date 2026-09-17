@@ -1,4 +1,19 @@
-from .compiler import CompiledView, Compiler
+from .animation import (
+    AfterPrevious,
+    Animation,
+    AnimationProgram,
+    Easing,
+    EffectInstance,
+    EffectKind,
+    FallbackPolicy,
+    OnAdvance,
+    SlideTimeline,
+    TimelineStep,
+    Transition,
+    TransitionEffect,
+    WithPrevious,
+)
+from .compiler import CompiledSlide, CompiledView, Compiler
 from .layout import (
     Constraints,
     Layout,
@@ -28,6 +43,7 @@ from .views import (
 )
 
 __all__ = [
+    "CompiledSlide",
     "CompiledView",
     "Compiler",
     "Constraints",
@@ -48,6 +64,22 @@ __all__ = [
     "VStack",
     "View",
     "ZStack",
+]
+
+__all__ += [
+    "AfterPrevious",
+    "Animation",
+    "AnimationProgram",
+    "Easing",
+    "EffectInstance",
+    "EffectKind",
+    "FallbackPolicy",
+    "OnAdvance",
+    "SlideTimeline",
+    "TimelineStep",
+    "Transition",
+    "TransitionEffect",
+    "WithPrevious",
 ]
 
 __all__ += [

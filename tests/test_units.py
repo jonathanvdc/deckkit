@@ -1,13 +1,23 @@
-from deckkit import Font, FileFontResolver
 from dataclasses import FrozenInstanceError
 from xml.etree import ElementTree as ET
 
 import pytest
 
-from deckkit import Compiler, HStack, Image, Length, Rectangle, Text, cm, inch, pt
+from deckkit import (
+    Compiler,
+    FileFontResolver,
+    Font,
+    HStack,
+    Image,
+    Rectangle,
+    Text,
+    cm,
+    inch,
+    pt,
+)
 from deckkit.backends import pptx, svg
-from deckkit.layout import Constraints, LayoutPlan
 from deckkit.drawables import Bounds
+from deckkit.layout import Constraints, LayoutPlan
 
 
 def test_conversion_and_dimensional_arithmetic():
@@ -50,8 +60,9 @@ def test_nonfinite_lengths(value):
 
 
 def test_mixed_units_and_physical_exports(font, tmp_path):
-    from deckkit import ClarityTheme
     from pptx import Presentation
+
+    from deckkit import ClarityTheme
 
     compiler = Compiler(
         ClarityTheme.from_font(Font("Test Font")),
@@ -59,9 +70,10 @@ def test_mixed_units_and_physical_exports(font, tmp_path):
         height=cm(12.7),
         font_resolver=FileFontResolver({Font("Test Font"): font}),
     )
-    layout = compiler.compile_view(
+    compiled = compiler.compile_view(
         Rectangle().frame(width=cm(2.54), height=inch(1)).padding(pt(12))
-    ).drawable
+    )
+    layout = compiled.drawable
     assert layout.bounds.width == pt(720)
     assert layout.bounds.height == pt(360)
     assert layout.children[0].bounds.width == pt(96)
@@ -76,7 +88,9 @@ def test_mixed_units_and_physical_exports(font, tmp_path):
     assert float(rect.attrib["x"]) == 12
     assert float(rect.attrib["width"]) == 72
     target = tmp_path / "units.pptx"
-    pptx.render([layout], target)
+    from deckkit import CompiledDeck
+
+    pptx.render(CompiledDeck.from_views(compiled), target)
     deck = Presentation(target)
     assert deck.slide_width == 10 * 914400
     shape = deck.slides[0].shapes[0]

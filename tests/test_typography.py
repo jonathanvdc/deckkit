@@ -1,16 +1,25 @@
-from deckkit import Font, FileFontResolver
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
 import pytest
 
-from deckkit import Compiler, Text, TextStyle, ClarityTheme, VStack, pt
+from deckkit import (
+    ClarityTheme,
+    Compiler,
+    FileFontResolver,
+    Font,
+    Text,
+    TextStyle,
+    VStack,
+    pt,
+)
 from deckkit.backends import pptx, svg
 from examples.themes import EditorialTheme
 
 
 def test_role_fonts_reach_measurement_and_exports(font, tmp_path):
     from pptx import Presentation
+
     from deckkit.measurement import PillowMeasurer
 
     # Distinct paths make accidental reuse visible on every supported platform.
@@ -31,17 +40,14 @@ def test_role_fonts_reach_measurement_and_exports(font, tmp_path):
             return PillowMeasurer.measure(*args)
 
     measurer = RecordingMeasurer()
-    layout = (
-        Compiler(
-            theme,
-            measurer=measurer,
-            font_resolver=FileFontResolver(
-                {Font("Test Font"): font, Font("Title Font"): str(title_font)}
-            ),
-        )
-        .compile_view(VStack(Text("Title"), Text("Body").font("body")).font("title"))
-        .drawable
-    )
+    compiled = Compiler(
+        theme,
+        measurer=measurer,
+        font_resolver=FileFontResolver(
+            {Font("Test Font"): font, Font("Title Font"): str(title_font)}
+        ),
+    ).compile_view(VStack(Text("Title"), Text("Body").font("body")).font("title"))
+    layout = compiled.drawable
     assert [(r[1].path, r[2], r[4]) for r in measurer.requests] == [
         (str(title_font), pt(36), 1.4),
         (font, pt(20), 1.1),
@@ -51,7 +57,9 @@ def test_role_fonts_reach_measurement_and_exports(font, tmp_path):
     )
     assert [float(e.attrib["font-size"]) for e in elements] == [36, 20]
     path = tmp_path / "fonts.pptx"
-    pptx.render([layout], path)
+    from deckkit import CompiledDeck
+
+    pptx.render(CompiledDeck.from_views(compiled), path)
     shapes = Presentation(path).slides[0].shapes
     assert [s.text_frame.paragraphs[0].font.size.pt for s in shapes] == [36, 20]
 

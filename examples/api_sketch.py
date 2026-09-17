@@ -1,6 +1,7 @@
 """API-first examples A–G; implemented subset except the clearly marked video sketch."""
 
 from dataclasses import dataclass
+
 from deckkit import *
 from deckkit.views.semantic import BeforeAfter, Metric, Stage
 
@@ -30,6 +31,9 @@ class ComparisonSlide(Slide):
 
 
 class PipelineSlide(Slide):
+    def timeline(self):
+        return SlideTimeline.steps(3)
+
     def body(self, context):
         step = context.state.get("step", 0)
         return VStack(
@@ -43,13 +47,26 @@ class PipelineSlide(Slide):
                         "opt"
                     ),
                     spacing=pt(32),
-                ),
+                ).padding(pt(36)),
                 Connector(
                     Anchor("parse", RelativePoint.trailing),
                     Anchor("opt", RelativePoint.leading),
                 ),
+                Connector(
+                    Anchor("opt", RelativePoint.bottom),
+                    Anchor("result-label", RelativePoint.top),
+                    end_cap="none",
+                    style="accent",
+                ),
+                Label(
+                    Anchor("opt", RelativePoint.bottom, offset_y=pt(24)),
+                    Text("Final IR").key("result-label").foreground_style("accent"),
+                    alignment=RelativePoint.center,
+                ),
             ),
-            Text("Three passes disappear").key("annotation").transition("opacity")
+            Text("Three passes disappear")
+            .key("annotation")
+            .transition(Transition.fade())
             if step >= 2
             else None,
             spacing=pt(28),
@@ -68,14 +85,21 @@ class Chart(CompositeView):
 
 
 class ResultsSlide(Slide):
+    def timeline(self):
+        return SlideTimeline.steps(2)
+
     def body(self, context):
         return VStack(
             Text("Compiler performance").font("title"),
             HStack(
-                Chart().key("results").flex().animation("smooth").animation_boundary(),
+                Chart()
+                .key("results")
+                .flex()
+                .animation(Animation.smooth(fallback=FallbackPolicy.CROSSFADE))
+                .animation_boundary(),
                 Metric(Text("2.7×"), Text("Throughput"))
                 .key("throughput")
-                .transition("opacity")
+                .transition(Transition.fade())
                 if context.state.get("step", 0)
                 else None,
                 spacing=pt(24),

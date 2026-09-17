@@ -1,20 +1,21 @@
-from deckkit.drawables import DrawableText
-from deckkit import Font, FileFontResolver
-from examples.themes import EditorialTheme
-from deckkit import pt
 from pathlib import Path
 from xml.etree import ElementTree as ET
+
 import pytest
+
 from deckkit import *
-from deckkit.measurement import PillowMeasurer
+from deckkit import FileFontResolver, Font, pt
+from deckkit.backends import pptx, svg
+from deckkit.drawables import DrawableText
 from deckkit.layouts import OverlayLayout, StackLayout
-from deckkit.backends import svg, pptx
+from deckkit.measurement import PillowMeasurer
 from examples.api_sketch import (
-    MetricsSlide,
     ComparisonSlide,
+    MetricsSlide,
     PipelineSlide,
     ResultsSlide,
 )
+from examples.themes import EditorialTheme
 
 
 def keyed(root, key):
@@ -46,7 +47,6 @@ def test_theme_changes_structure(font):
 
 
 def test_real_wrapping(font):
-    from deckkit import SystemFontResolver
 
     font = FileFontResolver({Font("Test Font"): font}).resolve(Font("Test Font"))
     m = PillowMeasurer()
@@ -110,7 +110,7 @@ def test_state_and_insertion(compiler):
     assert any(
         "key:annotation:" in c.identity
         and c.kind == "insert"
-        and c.transition == "opacity"
+        and c.transition == Transition.fade()
         for c in changes
     )
     reverse = compiler.changes(b, a)
@@ -128,7 +128,7 @@ def test_geometry_and_boundary(compiler):
         if c.identity == chart.identity and c.kind == "bounds"
     )
     assert change.before.width > change.after.width
-    assert change.animation == "smooth"
+    assert change.animation == Animation.smooth(fallback=FallbackPolicy.CROSSFADE)
 
 
 def test_reparent_and_duplicate_key(compiler):
@@ -160,10 +160,11 @@ def test_modifiers_copy_and_preserve_order(compiler):
 def test_both_backends_same_scene(compiler, tmp_path):
     from pptx import Presentation
 
-    layout = compiler.compile_view(MetricsSlide()).drawable
+    result = compiler.compile_view(MetricsSlide())
+    layout = result.drawable
     ET.fromstring(svg.render(layout))
     output = tmp_path / "metrics.pptx"
-    pptx.render([layout], output)
+    pptx.render(CompiledDeck.from_views(result), output)
     deck = Presentation(output)
     assert len(deck.slides) == 1
     texts = [s.text for s in deck.slides[0].shapes if s.has_text_frame]
@@ -190,15 +191,16 @@ def test_image_and_editable_shape(compiler, tmp_path, fit):
 
     asset = tmp_path / "asset.png"
     PILImage.new("RGB", (80, 40), "red").save(asset)
-    layout = compiler.compile_view(
+    result = compiler.compile_view(
         HStack(
             Image(str(asset), fit).frame(width=pt(100), height=pt(100)),
             Rectangle().frame(width=pt(50), height=pt(50)),
         )
-    ).drawable
+    )
+    layout = result.drawable
     assert "data:image/png;base64" in svg.render(layout)
     output = tmp_path / "image.pptx"
-    pptx.render([layout], output)
+    pptx.render(CompiledDeck.from_views(result), output)
     shapes = Presentation(output).slides[0].shapes
     assert shapes[0].shape_type == MSO_SHAPE_TYPE.PICTURE
     assert shapes[1].shape_type == MSO_SHAPE_TYPE.AUTO_SHAPE

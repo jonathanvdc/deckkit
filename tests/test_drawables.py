@@ -2,7 +2,8 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 
-from deckkit import Text, Rectangle, HStack, pt
+from deckkit import HStack, Rectangle, Text, pt
+from deckkit.backends import svg
 from deckkit.drawables import (
     Bounds,
     DrawableGroup,
@@ -10,7 +11,6 @@ from deckkit.drawables import (
     DrawableRectangle,
     DrawableText,
 )
-from deckkit.backends import svg, pptx
 
 
 def test_typed_content_and_allocated_bounds(compiler):
@@ -35,9 +35,7 @@ def test_typed_content_and_allocated_bounds(compiler):
         text.text = "Changed"
 
 
-def test_manual_drawables_export_without_views(tmp_path):
-    from pptx import Presentation
-
+def test_manual_drawables_export_to_svg_without_views():
     rectangle = DrawableRectangle(
         "rect",
         Bounds(pt(10), pt(10), pt(80), pt(40)),
@@ -52,8 +50,3 @@ def test_manual_drawables_export_without_views(tmp_path):
         (rectangle,),
     )
     assert "#123456" in svg.render(root)
-    output = tmp_path / "drawing.pptx"
-    pptx.render([root], output)
-    shape = Presentation(output).slides[0].shapes[0]
-    assert shape.width.pt == 80
-    assert str(shape.fill.fore_color.rgb) == "123456"

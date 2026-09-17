@@ -1,6 +1,4 @@
-from deckkit import Length
-from deckkit import pt
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import pytest
 
@@ -9,9 +7,11 @@ from deckkit import (
     LayoutOverflow,
     LayoutPlan,
     LayoutView,
+    Length,
     Placement,
     Rectangle,
     Text,
+    pt,
 )
 from deckkit.backends import pptx, svg
 from deckkit.layout import Constraints, LayoutEngine
@@ -24,7 +24,7 @@ from deckkit.views import Context, State
 class DiagonalLayout:
     """A user policy with no layout, node-kind or backend knowledge."""
 
-    inset: Length = pt(12)
+    inset: Length = field(default_factory=lambda: pt(12))
 
     def measure(self, constraints, children, context):
         placements = []
@@ -62,7 +62,9 @@ def test_custom_layout_through_both_backends(compiler, tmp_path):
     assert (second.bounds.x, second.bounds.y) == (pt(22), pt(22))
     assert "Custom layout" in svg.render(result.drawable)
     target = tmp_path / "custom.pptx"
-    pptx.render([result.drawable], target)
+    from deckkit import CompiledDeck
+
+    pptx.render(CompiledDeck.from_views(result), target)
     assert len(Presentation(target).slides[0].shapes) == 2
 
 

@@ -3,18 +3,18 @@ from pathlib import Path
 import pytest
 
 from deckkit import (
+    ClarityTheme,
+    Compiler,
+    FileFontResolver,
     Font,
     FontFile,
-    FileFontResolver,
     FontNotFoundError,
     SystemFontResolver,
-    Compiler,
-    ClarityTheme,
     Text,
     pt,
 )
+from deckkit.backends import pptx, svg
 from deckkit.measurement import PillowMeasurer
-from deckkit.backends import svg, pptx
 
 
 def test_file_resolver_and_system_discovery_agree(font, tmp_path):
@@ -66,17 +66,18 @@ def test_exports_use_resolved_family_not_file_alias(font, tmp_path):
 
     request = Font("Build font")
     resolver = FileFontResolver({request: font})
-    layout = (
-        Compiler(ClarityTheme.from_font(request), font_resolver=resolver)
-        .compile_view(Text("Hello"))
-        .drawable
-    )
+    compiled = Compiler(
+        ClarityTheme.from_font(request), font_resolver=resolver
+    ).compile_view(Text("Hello"))
+    layout = compiled.drawable
     face = resolver.resolve(request)
     assert layout.children[0].requested_font == request
     assert layout.children[0].font == face
     assert f'font-family="{face.family}"' in svg.render(layout)
     output = tmp_path / "fonts.pptx"
-    pptx.render([layout], output)
+    from deckkit import CompiledDeck
+
+    pptx.render(CompiledDeck.from_views(compiled), output)
     para = Presentation(output).slides[0].shapes[0].text_frame.paragraphs[0]
     assert para.font.name == face.family
     assert para.font.bold == face.bold

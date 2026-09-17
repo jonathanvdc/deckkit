@@ -7,6 +7,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+from .animation import Animation, Transition
 from .drawables import (
     Bounds,
     Drawable,
@@ -39,8 +40,8 @@ class ExpandedMetadata:
     key: str | None
     key_scope: KeyScope
     modifiers: tuple[Modifier, ...]
-    animation: str | None = field(metadata={"tracked": True})
-    transition: str | None = field(metadata={"tracked": True})
+    animation: Animation | None = field(metadata={"tracked": True})
+    transition: Transition | None = field(metadata={"tracked": True})
     animation_boundary: bool = field(metadata={"tracked": True})
 
 
@@ -64,11 +65,11 @@ class ExpandedView(ABC):
         return self.metadata.modifiers
 
     @property
-    def animation(self) -> str | None:
+    def animation(self) -> Animation | None:
         return self.metadata.animation
 
     @property
-    def transition(self) -> str | None:
+    def transition(self) -> Transition | None:
         return self.metadata.transition
 
     @property

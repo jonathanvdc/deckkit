@@ -6,7 +6,9 @@ from typing_extensions import assert_type
 
 from deckkit import (
     Anchor,
+    Animation,
     Annotated,
+    CompiledSlide,
     CompiledView,
     Compiler,
     CompositeView,
@@ -22,6 +24,8 @@ from deckkit import (
     Placement,
     Rectangle,
     RelativePoint,
+    Slide,
+    SlideTimeline,
     Text,
     Theme,
     View,
@@ -29,8 +33,8 @@ from deckkit import (
     inch,
     pt,
 )
-from deckkit.layout import Constraints
 from deckkit.drawables import Drawable
+from deckkit.layout import Constraints
 from deckkit.views.semantic import Metric
 
 
@@ -58,13 +62,24 @@ class CustomView(CompositeView):
         return Text("Typed composition")
 
 
+class CustomSlide(Slide):
+    def timeline(self) -> SlideTimeline:
+        return SlideTimeline.steps(2)
+
+    def body(self, context: Context) -> View:
+        return Text("Slide")
+
+
 def check_api(compiler: Compiler) -> None:
     assert_type(compiler.environment.get(CustomEnvironmentKey), int)
     text = Text("Hello").font("title").padding().frame(width=pt(100)).key("title")
     assert_type(text, Text)
     assert_type(Text("Custom").environment(CustomEnvironmentKey, 1), Text)
     Text("Invalid").environment(CustomEnvironmentKey, "wrong")  # type: ignore[misc]
-    assert_type(Metric(Text("2.7×"), Text("Throughput")).animation("smooth"), Metric)
+    assert_type(
+        Metric(Text("2.7×"), Text("Throughput")).animation(Animation.smooth()),
+        Metric,
+    )
     assert_type(CustomView().padding(), CustomView)
     assert_type(
         Annotated(
@@ -80,6 +95,10 @@ def check_api(compiler: Compiler) -> None:
     result = compiler.compile_view(LayoutView(policy, text, None))
     assert_type(result, CompiledView)
     assert_type(result.drawable, Drawable)
+    assert_type(
+        compiler.compile_slide(CustomSlide()),
+        CompiledSlide,
+    )
 
 
 def check_lengths() -> None:

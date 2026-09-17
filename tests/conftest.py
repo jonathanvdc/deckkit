@@ -1,8 +1,9 @@
-from deckkit import Font, FileFontResolver
 import os
 from pathlib import Path
+
 import pytest
-from deckkit import Compiler, ClarityTheme
+
+from deckkit import ClarityTheme, Compiler, FileFontResolver, Font
 
 
 @pytest.fixture

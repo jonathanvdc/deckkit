@@ -1,1 +1,1 @@
-"""Static backends consume resolved layouts only."""
+"""Output backends consume resolved layouts or compiled presentation sequences."""

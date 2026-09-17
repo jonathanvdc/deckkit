@@ -6,6 +6,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, fields
 from typing import Any, Literal, TypeVar
 
+from .animation import Animation, Transition
 from .drawables import Bounds, Drawable
 from .expanded_views import ExpandedView
 
@@ -16,8 +17,8 @@ class Change:
     kind: Literal["insert", "remove", "properties", "reparent", "bounds"]
     before: Mapping[str, Any] | Bounds | str | None = None
     after: Mapping[str, Any] | Bounds | str | None = None
-    animation: str | None = None
-    transition: str | None = None
+    animation: Animation | None = None
+    transition: Transition | None = None
 
 
 TreeT = TypeVar("TreeT", ExpandedView, Drawable)

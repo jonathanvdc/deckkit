@@ -3,13 +3,14 @@ from __future__ import annotations
 from collections.abc import Iterator
 from dataclasses import dataclass
 
+from ..animation import Animation, Transition
 from .bounds import Bounds
 
 
 @dataclass(frozen=True)
 class DrawableMetadata:
-    animation: str | None = None
-    transition: str | None = None
+    animation: Animation | None = None
+    transition: Transition | None = None
     animation_boundary: bool = False
 
 

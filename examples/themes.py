@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from deckkit import Context, Rectangle, ClarityTheme, View, VStack, ZStack, pt
+from deckkit import ClarityTheme, Context, Rectangle, View, VStack, ZStack, pt
 from deckkit.views.semantic import BeforeAfter, SemanticView
 
 

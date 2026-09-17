@@ -67,6 +67,47 @@ def test_label_aligns_any_view_to_an_anchor(compiler):
     assert label.bounds.y + label.bounds.height / 2 == pt(75)
 
 
+def test_connector_can_anchor_to_a_later_label(compiler):
+    result = compiler.compile_view(
+        Annotated(
+            Rectangle().frame(width=pt(200), height=pt(100)).key("target"),
+            Connector(
+                Anchor("label", RelativePoint.trailing),
+                Anchor("target", RelativePoint.trailing),
+            ),
+            Label(
+                Anchor("target", RelativePoint.center),
+                Text("Here").key("label"),
+                alignment=RelativePoint.center,
+            ),
+        )
+    )
+    label = next(
+        node
+        for node in result.drawable.walk()
+        if isinstance(node, DrawableText) and node.text == "Here"
+    )
+    connector = next(
+        node for node in result.drawable.walk() if isinstance(node, DrawableConnector)
+    )
+
+    assert connector.start.x == label.bounds.x + label.bounds.width
+    assert connector.start.y == label.bounds.y + label.bounds.height / 2
+    assert connector.end.x == pt(200)
+    assert connector.end.y == pt(50)
+
+
+def test_annotation_dependency_cycle_is_diagnosed(compiler):
+    with pytest.raises(ValueError, match="Annotation dependencies.*cycle"):
+        compiler.compile_view(
+            Annotated(
+                Rectangle().frame(width=pt(200), height=pt(100)),
+                Label(Anchor("second"), Text("First").key("first")),
+                Label(Anchor("first"), Text("Second").key("second")),
+            )
+        )
+
+
 def test_reusable_annotated_components_have_scoped_keys(compiler):
     @dataclass(frozen=True)
     class Pipeline(CompositeView):
@@ -103,7 +144,7 @@ def test_unknown_anchor_key_is_diagnosed(compiler):
 def test_connector_renders_in_both_backends(compiler, tmp_path):
     from pptx import Presentation
 
-    drawable = compiler.compile_view(
+    compiled = compiler.compile_view(
         Annotated(
             HStack(
                 Rectangle().frame(width=pt(20), height=pt(20)).key("a"),
@@ -111,13 +152,16 @@ def test_connector_renders_in_both_backends(compiler, tmp_path):
             ),
             Connector(Anchor("a"), Anchor("b")),
         )
-    ).drawable
+    )
+    drawable = compiled.drawable
 
     markup = svg.render(drawable)
     assert "<line" in markup
     assert "marker-end" in markup
 
     target = tmp_path / "connector.pptx"
-    pptx.render([drawable], target)
+    from deckkit import CompiledDeck
+
+    pptx.render(CompiledDeck.from_views(compiled), target)
     connector = Presentation(target).slides[0].shapes[-1]
     assert "tailEnd" in connector.element.xml

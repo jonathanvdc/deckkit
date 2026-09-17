@@ -5,7 +5,14 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
-from deckkit import ClarityTheme, Compiler, Deck, Font, State, TextStyle
+from deckkit import (
+    ClarityTheme,
+    CompiledDeck,
+    Compiler,
+    Deck,
+    Font,
+    TextStyle,
+)
 from deckkit.backends import pptx, svg
 
 from .api_sketch import ComparisonSlide, MetricsSlide, PipelineSlide, ResultsSlide
@@ -31,20 +38,29 @@ def main() -> None:
             typography[role] = TextStyle(Font(family), typography[role].size)
     compiler = Compiler(ClarityTheme(typography))
 
-    deck = Deck([MetricsSlide(), ComparisonSlide(), PipelineSlide(), ResultsSlide()])
+    deck = Deck(
+        [
+            MetricsSlide(),
+            ComparisonSlide(),
+            PipelineSlide(),
+            ResultsSlide(),
+        ]
+    )
     compiled = compiler.compile_deck(deck)
-    pptx.render(compiled.drawables, output / "prototype.pptx")
-    for number, layout in enumerate(compiled.drawables, start=1):
-        (output / f"slide-{number}.svg").write_text(svg.render(layout))
+    pptx.render(compiled, output / "prototype.pptx")
+    for number, slide in enumerate(compiled.slides, start=1):
+        (output / f"slide-{number}.svg").write_text(svg.render(slide.initial.drawable))
 
     # Independent demonstrations of theme recipes and presentation state.
     editorial = Compiler(EditorialTheme(typography)).compile_deck(deck[1:2])
-    (output / "editorial.svg").write_text(svg.render(editorial.drawables[0]))
-    for step in range(3):
-        layout = compiler.compile_view(deck[2], State(step=step)).drawable
-        (output / f"pipeline-{step}.svg").write_text(svg.render(layout))
-    before = compiled.slides[3]
-    after = compiler.compile_view(deck[3], State(step=1))
+    (output / "editorial.svg").write_text(
+        svg.render(editorial.slides[0].initial.drawable)
+    )
+    pipeline = compiled.slides[2]
+    for step, state in enumerate(pipeline.states):
+        (output / f"pipeline-{step}.svg").write_text(svg.render(state.drawable))
+    pptx.render(CompiledDeck((pipeline,)), output / "pipeline-animated.pptx")
+    before, after = compiled.slides[3].states
     (output / "results-1.svg").write_text(svg.render(after.drawable))
     (output / "changes.json").write_text(
         json.dumps(
@@ -54,7 +70,7 @@ def main() -> None:
         )
     )
     print(
-        f"Wrote {len(deck)}-slide prototype.pptx, SVG previews and state examples to {output}"
+        f"Wrote {len(deck)}-slide prototype.pptx, an animated pipeline, SVG previews and state examples to {output}"
     )
 
 

@@ -39,8 +39,10 @@ Semantic values survive as composite properties; concrete font/color resolution 
 during expansion. Drawable nodes retain identity, kind, parentage, animation/transition,
 and boundary metadata. The smallest change record contains property changes, insertion,
 removal, reparenting and old/new bounds. Animation decorates persistent changes;
-transition decorates insertion/removal. Boundary metadata is retained without suppressing
-child reconciliation; specialized chart transitions are a future pass.
+transition decorates insertion/removal. A boundary stops animation and transition
+inheritance from its ancestors without suppressing child reconciliation; a boundary's own
+animation becomes the scope for its descendants. Specialized chart transitions remain a
+future pass.
 
 Measurement caches immutable requests including text, font file, size and available width.
 A concrete font file selects weight/style (no synthetic bold). Line spacing is explicit.
@@ -57,9 +59,11 @@ Overflow fails with identity, available/required size and a suggested correction
 Grid, Fraction, MinMax, baseline alignment and responsive recipes can wait.
 
 Image assets are captured during compilation with intrinsic dimensions; contain and cover
-are renderer-independent fit choices. The scene is self-contained. Static backends reject
-unsupported primitives. PPTX animation lowering is explicitly absent: export selected
-states as separate static slides until capability/fallback policy is designed.
+are renderer-independent fit choices. The scene is self-contained. Explicit state
+sequences compile to a backend-neutral animation program. PPTX lowers its initial native
+subset to editable union-scene shapes and a PresentationML timing tree; static SVG
+continues to export selected states. Unsupported effects fail by default and have explicit
+crossfade or discrete fallback policies. Rasterization is not a fallback.
 
 ## Research and open questions
 
@@ -73,8 +77,9 @@ https://uharfbuzz.readthedocs.io/reference.html
 The next design review should focus on global keys versus scoped keys plus a separate
 matched-geometry ID; automatic text compression versus explicit flex; environment
 subtree overrides; and whether modifier records should become public typed values.
-Do not add a runtime scheduler, generic constraint solver or animation effect taxonomy
-to answer questions that this vertical slice can settle first.
+Do not add a reactive runtime scheduler or generic constraint solver. Presentation builds
+are explicit state snapshots, with `OnAdvance`, `WithPrevious`, and `AfterPrevious`
+providing the scheduling vocabulary required by PPTX and a future HTML player.
 
 ## Publication gate
 
@@ -223,7 +228,9 @@ The final rendering representation is a hierarchy of `Drawable` objects with no
 outer wrapper. `CompiledView.drawable` is a canvas-sized root group at `(0, 0)`;
 its first child retains the compiled content's own bounds and identity. Exporters
 use the root bounds as canvas dimensions and traverse its children for drawing.
-`CompiledDeck.drawables` provides those roots in slide order. The synthetic root's
+Each `CompiledSlide` retains those roots at its initial and step boundaries. A
+`CompiledDeck` can expand those boundaries into static logical slides without consulting
+a backend. The synthetic root's
 reserved `canvas` identity is distinct from source-view identities and preserves
 canvas geometry for comparisons without stretching the content to fill it.
 
