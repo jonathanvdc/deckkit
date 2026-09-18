@@ -103,7 +103,9 @@ def test_compile_deck_and_export_order(compiler, tmp_path):
 
 
 def test_empty_deck(compiler):
-    assert compiler.compile_deck(Deck([], theme=compiler.environment.theme)).slides == ()
+    assert (
+        compiler.compile_deck(Deck([], theme=compiler.environment.theme)).slides == ()
+    )
 
 
 def test_slide_timeline_and_static_expansion(compiler):
@@ -112,9 +114,7 @@ def test_slide_timeline_and_static_expansion(compiler):
             return SlideTimeline.steps(3)
 
     slide = NumberedSlide("One")
-    compiled = compiler.compile_deck(
-        Deck([slide], theme=compiler.environment.theme)
-    )
+    compiled = compiler.compile_deck(Deck([slide], theme=compiler.environment.theme))
     assert compiled.slides[0].is_animated
     assert all(
         isinstance(build.trigger, OnAdvance)

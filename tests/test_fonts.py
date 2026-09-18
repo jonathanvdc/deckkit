@@ -72,7 +72,9 @@ def test_exports_use_resolved_family_not_file_alias(font, tmp_path):
             style = super().text_style(role)
             return TextStyle(request, style.size, style.line_spacing)
 
-    compiled = Compiler(BuildTheme(), font_resolver=resolver).compile_view(Text("Hello"))
+    compiled = Compiler(BuildTheme(), font_resolver=resolver).compile_view(
+        Text("Hello")
+    )
     layout = compiled.drawable
     face = resolver.resolve(request)
     assert layout.children[0].requested_font == request

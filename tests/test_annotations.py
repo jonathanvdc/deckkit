@@ -64,9 +64,7 @@ def test_label_aligns_any_view_to_an_anchor(compiler):
 def test_annotations_expand_layout_bounds(compiler):
     result = compiler.compile_view(
         Annotated(
-            Rectangle()
-            .frame(width=pt(100), height=pt(40))
-            .key("target"),
+            Rectangle().frame(width=pt(100), height=pt(40)).key("target"),
             Label(
                 Anchor(
                     "target",
@@ -89,14 +87,10 @@ def test_annotations_expand_layout_bounds(compiler):
     )
     annotated = result.drawable.children[0]
     target = next(
-        node
-        for node in annotated.walk()
-        if isinstance(node, DrawableRectangle)
+        node for node in annotated.walk() if isinstance(node, DrawableRectangle)
     )
     labels = {
-        node.text: node
-        for node in annotated.walk()
-        if isinstance(node, DrawableText)
+        node.text: node for node in annotated.walk() if isinstance(node, DrawableText)
     }
 
     assert annotated.bounds.width > pt(100)

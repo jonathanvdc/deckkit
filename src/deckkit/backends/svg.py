@@ -40,9 +40,7 @@ def render(layout: Drawable) -> str:
                 "fill": node.color,
             }
             if node.corner_radius.points > 0:
-                attributes["rx"] = attributes["ry"] = str(
-                    node.corner_radius.points
-                )
+                attributes["rx"] = attributes["ry"] = str(node.corner_radius.points)
             SubElement(group, "rect", attributes)
         elif isinstance(node, DrawableText):
             m = node.metrics

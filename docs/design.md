@@ -163,10 +163,12 @@ Customize them through ordinary subclassing:
 from deckkit.fonts import Font
 from deckkit.themes import ClarityTheme, TextStyle
 
+
 class BrandTheme(ClarityTheme):
     def text_style(self, role):
         style = super().text_style(role)
         return TextStyle(Font("Inter"), style.size, style.line_spacing)
+
 
 theme = BrandTheme()
 ```

@@ -38,9 +38,7 @@ def test_svg_uses_the_effective_physical_radius(compiler):
     rounded = compiler.compile_view(
         Rectangle(pt(12)).frame(width=pt(100), height=pt(50))
     )
-    square = compiler.compile_view(
-        Rectangle().frame(width=pt(100), height=pt(50))
-    )
+    square = compiler.compile_view(Rectangle().frame(width=pt(100), height=pt(50)))
 
     rounded_rect = ET.fromstring(svg.render(rounded.drawable)).find(
         ".//{http://www.w3.org/2000/svg}g//{http://www.w3.org/2000/svg}rect"

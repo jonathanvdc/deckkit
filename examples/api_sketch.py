@@ -43,9 +43,9 @@ class PipelineSlide(Slide):
         return VStack(
             Text("A simpler lowering pipeline").font("title"),
             Pipeline(
-                PipelineStage(
-                    Text("Parse"), "primary" if step == 0 else "muted"
-                ).key("parse"),
+                PipelineStage(Text("Parse"), "primary" if step == 0 else "muted").key(
+                    "parse"
+                ),
                 PipelineStage(
                     Text("Optimize"), "primary" if step == 1 else "muted"
                 ).key("opt"),
@@ -58,9 +58,7 @@ class PipelineSlide(Slide):
                     ),
                     Label(
                         Anchor("opt", RelativePoint.bottom, offset_y=pt(24)),
-                        Text("Final IR")
-                        .key("result-label")
-                        .foreground_style("accent"),
+                        Text("Final IR").key("result-label").foreground_style("accent"),
                         alignment=RelativePoint.center,
                     ),
                 ),

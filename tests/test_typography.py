@@ -27,6 +27,7 @@ def test_role_fonts_reach_measurement_and_exports(font, tmp_path):
     title_font.write_bytes(Path(font).read_bytes())
     roles = dict(ClarityTheme().typography)
     roles["title"] = TextStyle(Font("Title Font"), pt(36), 1.4)
+
     class MixedFontTheme(ClarityTheme):
         typography = MappingProxyType(dict(roles))
 

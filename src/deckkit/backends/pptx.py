@@ -436,10 +436,14 @@ def _render_slide(prs: Any, compiled_slide: CompiledSlide) -> None:
                 and (behavior.before.width, behavior.before.height)
                 != (behavior.after.width, behavior.after.height)
             )
-            if effect.kind in (EffectKind.INSERT, EffectKind.CHANGE) or (
-                effect.kind is EffectKind.MOVE
-                and behavior.kind is PptxBehaviorKind.CROSSFADE
-            ) or discrete_resize:
+            if (
+                effect.kind in (EffectKind.INSERT, EffectKind.CHANGE)
+                or (
+                    effect.kind is EffectKind.MOVE
+                    and behavior.kind is PptxBehaviorKind.CROSSFADE
+                )
+                or discrete_resize
+            ):
                 assert effect.after is not None
                 shape = _add_node(
                     slide,

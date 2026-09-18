@@ -102,11 +102,14 @@ def test_pill_accepts_any_view_and_before_after_uses_pills(compiler):
     comparison = compiler.compile_view(
         BeforeAfter(Text("Change"), Text("Old"), Text("New"), Text("Result"))
     )
-    assert sum(
-        1
-        for node in comparison.expanded_tree.walk()
-        if getattr(node, "component_type", "").endswith(".Pill")
-    ) == 2
+    assert (
+        sum(
+            1
+            for node in comparison.expanded_tree.walk()
+            if getattr(node, "component_type", "").endswith(".Pill")
+        )
+        == 2
+    )
     labels = [
         node
         for node in comparison.drawable.walk()

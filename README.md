@@ -159,7 +159,14 @@ Semantic content slots accept views, including nested composites:
 
 ```python
 from deckkit.views import HStack, Text, VStack
-from deckkit.views.semantic import BeforeAfter, Card, Metric, Pill, Pipeline, PipelineStage
+from deckkit.views.semantic import (
+    BeforeAfter,
+    Card,
+    Metric,
+    Pill,
+    Pipeline,
+    PipelineStage,
+)
 
 pipeline = Pipeline(
     PipelineStage(Text("Parse")),
@@ -224,10 +231,12 @@ Customize them through ordinary subclassing:
 from deckkit.fonts import Font
 from deckkit.themes import ClarityTheme, TextStyle
 
+
 class BrandTheme(ClarityTheme):
     def text_style(self, role):
         style = super().text_style(role)
         return TextStyle(Font("Inter"), style.size, style.line_spacing)
+
 
 theme = BrandTheme()
 ```
