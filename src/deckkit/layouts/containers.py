@@ -90,8 +90,8 @@ class OverlayLayout:
         ]
         width = max([c.min_width] + [plan.width for plan in intrinsic])
         height = max([c.min_height] + [plan.height for plan in intrinsic])
-        # A second proposal is necessary to expand flexible backgrounds. Identical
-        # proposals hit the per-compilation child cache; placement never measures.
+        # The exact second proposal lets proposal-responsive children fill the
+        # overlay while intrinsic content retains centered content geometry.
         allocation = Constraints(width, height, width, height)
         return content(
             width,

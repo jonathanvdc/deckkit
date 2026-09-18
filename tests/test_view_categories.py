@@ -4,14 +4,17 @@ from dataclasses import dataclass
 
 import pytest
 
-from deckkit import (
-    CompositeView,
-    Context,
-    EnvironmentKey,
+from deckkit.expanded_views import (
     ExpandedComponent,
     ExpandedMetadata,
     ExpandedRectangle,
     ExpandedText,
+)
+from deckkit.layouts import ShapeLayout
+from deckkit.views import (
+    CompositeView,
+    Context,
+    EnvironmentKey,
     FontRoleKey,
     ForegroundStyleKey,
     HStack,
@@ -25,7 +28,6 @@ from deckkit import (
     VStack,
     ZStack,
 )
-from deckkit.layouts import ShapeLayout
 from deckkit.views.semantic import Metric, SemanticView
 from deckkit.views.stack import Stack
 
@@ -52,7 +54,9 @@ def test_only_composites_have_body():
         assert issubclass(view, LayoutView)
 
 
-@pytest.mark.parametrize("base", [CompositeView, Slide, SemanticView, Stack])
+@pytest.mark.parametrize(
+    "base", [CompositeView, Slide, SemanticView, LayoutView, Stack]
+)
 def test_incomplete_categories_are_abstract(base):
     with pytest.raises(TypeError, match="abstract"):
         base()

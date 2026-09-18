@@ -5,8 +5,6 @@ from .stack import Stack
 
 
 class HStack(Stack):
-    layout_kind = "hstack"
-
     def _make_layout(self) -> Layout:
         from ..layouts import StackLayout
 

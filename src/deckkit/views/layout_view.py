@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Callable
 
@@ -10,19 +11,18 @@ from .view import View
 
 
 @dataclass(frozen=True, init=False)
-class LayoutView(View):
-    """Compose children using a custom layout policy."""
+class LayoutView(View, ABC):
+    """Base class for views whose children are arranged by a layout policy."""
 
-    layout: Layout
     children: tuple[View | None, ...]
-    layout_kind = "layout"
 
-    def __init__(self, layout: Layout, *children: View | None) -> None:
-        object.__setattr__(self, "layout", layout)
+    def __init__(self, *children: View | None) -> None:
         object.__setattr__(self, "children", tuple(children))
 
+    @abstractmethod
     def resolve_layout(self, lookup: Callable[[str], ViewIdentity]) -> Layout:
-        return self.layout
+        """Return the policy used to arrange this occurrence's children."""
+        raise NotImplementedError
 
     @property
     def _expanded_spacing(self) -> Length | None:

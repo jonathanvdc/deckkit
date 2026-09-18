@@ -121,7 +121,7 @@ def expand_view(
             )
         else:
             raise TypeError(
-                f"Unsupported view type: {typename}; inherit CompositeView for body-based composition or use LayoutView"
+                f"Unsupported view type: {typename}; inherit CompositeView for body-based composition or LayoutView for custom layout"
             )
         for modifier in value._modifiers:
             if modifier[0] == "padding":

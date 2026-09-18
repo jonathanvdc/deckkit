@@ -1,23 +1,37 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
+from typing import Callable
 
 import pytest
 
-from deckkit import (
+from deckkit.backends import pptx, svg
+from deckkit.identity import ViewIdentity
+from deckkit.layout import (
+    Constraints,
+    Layout,
     LayoutContext,
+    LayoutEngine,
     LayoutOverflow,
     LayoutPlan,
-    LayoutView,
-    Length,
     Placement,
-    Rectangle,
-    Text,
-    pt,
 )
-from deckkit.backends import pptx, svg
-from deckkit.layout import Constraints, LayoutEngine
 from deckkit.layouts import StackLayout
+from deckkit.units import Length, pt
 from deckkit.view_expansion import expand_view
-from deckkit.views import Context, State
+from deckkit.views import Context, LayoutView, Rectangle, State, Text, View
+
+
+@dataclass(frozen=True, init=False)
+class CustomLayoutView(LayoutView):
+    layout: Layout
+
+    def __init__(self, layout: Layout, *children: View | None) -> None:
+        object.__setattr__(self, "layout", layout)
+        super().__init__(*children)
+
+    def resolve_layout(self, lookup: Callable[[str], ViewIdentity]) -> Layout:
+        return self.layout
 
 
 @dataclass(frozen=True)
@@ -51,7 +65,7 @@ class DiagonalLayout:
 def test_custom_layout_through_both_backends(compiler, tmp_path):
     from pptx import Presentation
 
-    view = LayoutView(
+    view = CustomLayoutView(
         DiagonalLayout(),
         Rectangle().frame(width=pt(30), height=pt(20)).key("box"),
         Text("Custom layout").key("label"),
@@ -77,7 +91,7 @@ def test_placement_does_not_remeasure(compiler):
             return compiler.measurer.measure(*args)
 
     measurer = CountingMeasurer()
-    view = LayoutView(DiagonalLayout(), Text("Once"))
+    view = CustomLayoutView(DiagonalLayout(), Text("Once"))
     tree = expand_view(view, Context(State(), compiler.environment))
     assert measurer.calls == 0
     context = LayoutContext(measurer, compiler.font_resolver)
@@ -89,7 +103,7 @@ def test_placement_does_not_remeasure(compiler):
 
 
 def test_vertical_flex_allocation(compiler):
-    view = LayoutView(
+    view = CustomLayoutView(
         StackLayout("vertical", pt(10)),
         Rectangle().frame(width=pt(30), height=pt(50)),
         Rectangle().flex(),
@@ -113,8 +127,8 @@ def test_bad_custom_placement_is_diagnosed(compiler):
             )
 
     with pytest.raises(LayoutOverflow) as error:
-        compiler.compile_view(LayoutView(BadLayout(), Text("Outside")))
-    assert error.value.identity.endswith("deckkit.views.layout_view.LayoutView")
+        compiler.compile_view(CustomLayoutView(BadLayout(), Text("Outside")))
+    assert error.value.identity.endswith("test_layout_policies.CustomLayoutView")
 
 
 def test_modifier_overflow_has_component_identity(compiler):

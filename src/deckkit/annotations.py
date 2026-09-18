@@ -10,7 +10,7 @@ from .context import Context, ForegroundStyleKey
 from .expanded_views import ExpandedConnector, ExpandedMetadata
 from .geometry import RelativePoint
 from .identity import ViewIdentity
-from .layouts import AnnotatedLayout, ConnectorLayout, PassthroughLayout
+from .layouts import AnnotatedLayout, ConnectorLayout
 from .layouts.annotations import (
     ResolvedAnchor,
     ResolvedAnnotation,
@@ -118,7 +118,6 @@ class Annotated(LayoutView):
             raise TypeError("Annotated annotations must inherit Annotation")
         object.__setattr__(self, "annotations", tuple(annotations))
         super().__init__(
-            PassthroughLayout(),
             content,
             *(annotation.view for annotation in annotations),
         )
