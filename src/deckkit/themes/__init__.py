@@ -1,6 +1,6 @@
 """Theme contracts and bundled design systems."""
 
-from ..theme import TextStyle, Theme
+from ..theme import CodeTokenStyle, TextStyle, Theme
 from .clarity import ClarityTheme
 
-__all__ = ["ClarityTheme", "TextStyle", "Theme"]
+__all__ = ["ClarityTheme", "CodeTokenStyle", "TextStyle", "Theme"]

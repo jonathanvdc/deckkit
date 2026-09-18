@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from dataclasses import dataclass
 from math import isfinite
-from typing import TYPE_CHECKING
+from types import MappingProxyType
+from typing import TYPE_CHECKING, ClassVar
 
 from .fonts import Font
 from .units import Length, pt, require_length
@@ -37,8 +39,19 @@ class TextStyle:
             raise ValueError("Line spacing must be finite and positive")
 
 
+@dataclass(frozen=True)
+class CodeTokenStyle:
+    """Optional text-style overrides associated with a code token scope."""
+
+    foreground_style: str | None = None
+    background_style: str | None = None
+    font_role: str | None = None
+
+
 class Theme(ABC):
     """Design-system contract, independent of any particular palette or type scale."""
+
+    code_styles: ClassVar[Mapping[str, CodeTokenStyle]] = MappingProxyType({})
 
     @abstractmethod
     def text_style(self, role: str) -> TextStyle:
@@ -49,6 +62,30 @@ class Theme(ABC):
     def color(self, role: str) -> str:
         """Resolve a semantic color role to an RGB hex color."""
         raise NotImplementedError
+
+    def code_style(self, language: str | None, token: str | None) -> CodeTokenStyle:
+        """Resolve cascading language and token scopes to presentation roles."""
+        token_parts = token.split(".") if token else []
+        keys = ["plain"]
+        keys.extend(
+            ".".join(token_parts[:end]) for end in range(1, len(token_parts) + 1)
+        )
+        if language:
+            keys.append(language)
+            keys.extend(
+                f"{language}.{'.'.join(token_parts[:end])}"
+                for end in range(1, len(token_parts) + 1)
+            )
+        result = CodeTokenStyle()
+        for key in keys:
+            override = self.code_styles.get(key)
+            if override is not None:
+                result = CodeTokenStyle(
+                    override.foreground_style or result.foreground_style,
+                    override.background_style or result.background_style,
+                    override.font_role or result.font_role,
+                )
+        return result
 
     def render_semantic(self, component: SemanticView, context: Context) -> View | None:
         """Optionally override a component; None selects its default composition."""

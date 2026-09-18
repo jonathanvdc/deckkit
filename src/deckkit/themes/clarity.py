@@ -5,7 +5,7 @@ from types import MappingProxyType
 from typing import ClassVar
 
 from ..fonts import Font
-from ..theme import TextStyle, Theme
+from ..theme import CodeTokenStyle, TextStyle, Theme
 from ..units import pt
 
 
@@ -14,13 +14,19 @@ class ClarityTheme(Theme):
 
     typography: ClassVar[Mapping[str, TextStyle]] = MappingProxyType(
         {
-            role: TextStyle(Font("Aptos"), pt(size))
-            for role, size in {
-                "title": 32,
-                "body": 20,
-                "caption": 16,
-                "metric": 46,
-            }.items()
+            "title": TextStyle(Font("Aptos"), pt(32)),
+            "body": TextStyle(Font("Aptos"), pt(20)),
+            "caption": TextStyle(Font("Aptos"), pt(16)),
+            "metric": TextStyle(Font("Aptos"), pt(46)),
+            "code": TextStyle(Font("Aptos Mono"), pt(18)),
+        }
+    )
+
+    code_styles: ClassVar[Mapping[str, CodeTokenStyle]] = MappingProxyType(
+        {
+            "comment": CodeTokenStyle(foreground_style="muted"),
+            "keyword": CodeTokenStyle(foreground_style="accent"),
+            "string": CodeTokenStyle(foreground_style="accent"),
         }
     )
 

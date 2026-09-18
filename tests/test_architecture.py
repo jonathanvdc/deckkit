@@ -16,6 +16,7 @@ from deckkit.themes import ClarityTheme
 from deckkit.units import pt
 from deckkit.views import HStack, Image, Rectangle, State, Text, VStack
 from examples.api_sketch import (
+    CodeSlide,
     ComparisonSlide,
     MetricsSlide,
     PipelineSlide,
@@ -39,6 +40,11 @@ def test_package_root_only_exposes_compilation_entry_points():
     assert not hasattr(deckkit, "ClarityTheme")
 
 
+def test_code_example_compiles(compiler):
+    compiled = compiler.compile_view(CodeSlide())
+    assert any(node.identity.endswith("Code") for node in compiled.expanded_tree.walk())
+
+
 def keyed(root, key):
     return next(n for n in root.walk() if f"key:{key}:" in n.identity)
 
@@ -47,11 +53,11 @@ def test_theme_changes_structure(font):
     source = ComparisonSlide()
     a = Compiler(
         ClarityTheme(),
-        font_resolver=FileFontResolver({Font("Aptos"): font}),
+        font_resolver=FileFontResolver({Font("Aptos"): font, Font("Aptos Mono"): font}),
     ).compile_view(source)
     b = Compiler(
         EditorialTheme(),
-        font_resolver=FileFontResolver({Font("Aptos"): font}),
+        font_resolver=FileFontResolver({Font("Aptos"): font, Font("Aptos Mono"): font}),
     ).compile_view(source)
     assert any(
         isinstance(n, ExpandedLayout)

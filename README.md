@@ -267,6 +267,30 @@ source = Text(
 Use `flow="wrapped"` for ordinary wrapping across span boundaries and
 `flow="verbatim"` to preserve spaces and logical lines without wrapping.
 
+Use the semantic `Code` view when spans represent language tokens rather than
+literal presentation. Token scopes are open, hierarchical strings, so each
+language can use its own vocabulary without extending a shared enum:
+
+```python
+from deckkit.views.semantic import Code, CodeLine, CodeSpan
+
+source = Code(
+    CodeLine(
+        CodeSpan("def", token="keyword.declaration"),
+        CodeSpan(" greet", token="name.function"),
+        CodeSpan("(name):", token="punctuation"),
+    ),
+    CodeLine('    return f"Hello, {name}"'),
+    language="python",
+)
+```
+
+Themes map scopes to presentation roles with `CodeTokenStyle`. Styles cascade
+from broad to specific—for example `keyword`, `keyword.declaration`,
+`python.keyword`, then `python.keyword.declaration`. Manual span overrides take
+precedence. `Code` preserves whitespace and lowers to the same rich-text model as
+`Text`, which also provides a target representation for future automatic lexers.
+
 
 ## Font resolution
 
@@ -335,7 +359,7 @@ There is only one deck compilation and PPTX export path. To materialize builds a
 static slides for a backend without animation support, call `compiled.expanding_steps()`
 before export. SVG renders a selected endpoint such as `slide.initial.drawable` directly.
 
-The example runner exports a four-slide deck to `output/prototype.pptx`. It does
+The example runner exports a five-slide deck to `output/prototype.pptx`. It does
 not remove older files from an existing output directory.
 
 

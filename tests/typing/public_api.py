@@ -22,7 +22,7 @@ from deckkit.layout import (
     LayoutPlan,
     Placement,
 )
-from deckkit.themes import Theme
+from deckkit.themes import CodeTokenStyle, Theme
 from deckkit.units import Length, cm, inch, pt
 from deckkit.views import (
     CompositeView,
@@ -37,7 +37,16 @@ from deckkit.views import (
     TextSpan,
     View,
 )
-from deckkit.views.semantic import Card, Metric, Pill, Pipeline, PipelineStage
+from deckkit.views.semantic import (
+    Card,
+    Code,
+    CodeLine,
+    CodeSpan,
+    Metric,
+    Pill,
+    Pipeline,
+    PipelineStage,
+)
 
 
 class CustomLayout:
@@ -107,6 +116,17 @@ def check_api(compiler: Compiler) -> None:
     )
     assert_type(Pill(HStack(Text("New"), Text("label"))), Pill)
     assert_type(Card(HStack(Text("Heading"), Text("content"))), Card)
+    assert_type(
+        Code(
+            CodeLine(
+                CodeSpan("def", token="keyword.declaration"),
+                " greet():",
+            ),
+            language="python",
+        ),
+        Code,
+    )
+    assert_type(CodeTokenStyle(foreground_style="accent"), CodeTokenStyle)
     assert_type(
         Pipeline(PipelineStage(Text("Parse")), PipelineStage(Text("Optimize"))),
         Pipeline,

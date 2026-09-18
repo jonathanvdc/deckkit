@@ -26,5 +26,5 @@ def font():
 def compiler(font):
     return Compiler(
         ClarityTheme(),
-        font_resolver=FileFontResolver({Font("Aptos"): font}),
+        font_resolver=FileFontResolver({Font("Aptos"): font, Font("Aptos Mono"): font}),
     )

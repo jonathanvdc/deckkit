@@ -6,7 +6,13 @@ from pathlib import Path
 from deckkit import Deck
 from deckkit.themes import ClarityTheme
 
-from .api_sketch import ComparisonSlide, MetricsSlide, PipelineSlide, ResultsSlide
+from .api_sketch import (
+    CodeSlide,
+    ComparisonSlide,
+    MetricsSlide,
+    PipelineSlide,
+    ResultsSlide,
+)
 
 
 def main() -> None:
@@ -20,6 +26,7 @@ def main() -> None:
         [
             MetricsSlide(),
             ComparisonSlide(),
+            CodeSlide(),
             PipelineSlide(),
             ResultsSlide(),
         ],

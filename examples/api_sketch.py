@@ -7,7 +7,15 @@ from deckkit.annotations import Anchor, Connector, Label
 from deckkit.geometry import RelativePoint
 from deckkit.units import pt
 from deckkit.views import CompositeView, HStack, Rectangle, Slide, Text, VStack, ZStack
-from deckkit.views.semantic import BeforeAfter, Metric, Pipeline, PipelineStage
+from deckkit.views.semantic import (
+    BeforeAfter,
+    Code,
+    CodeLine,
+    CodeSpan,
+    Metric,
+    Pipeline,
+    PipelineStage,
+)
 
 
 class MetricsSlide(Slide):
@@ -31,6 +39,40 @@ class ComparisonSlide(Slide):
             Text("Parse · Lower · Optimize"),
             Text("Parse · Optimize"),
             Text("Three intermediate passes disappear."),
+        ).padding(pt(40))
+
+
+class CodeSlide(Slide):
+    def body(self, context):
+        return VStack(
+            Text("Language-aware code styling").font("title"),
+            Code(
+                CodeLine(
+                    CodeSpan("def", token="keyword.declaration"),
+                    CodeSpan(" optimize", token="name.function"),
+                    CodeSpan("(module):", token="punctuation"),
+                ),
+                CodeLine(
+                    CodeSpan("    passes", token="name"),
+                    CodeSpan(" = ", token="operator"),
+                    CodeSpan("[", token="punctuation"),
+                    CodeSpan('"lower"', token="string"),
+                    CodeSpan(", ", token="punctuation"),
+                    CodeSpan('"simplify"', token="string"),
+                    CodeSpan("]", token="punctuation"),
+                ),
+                CodeLine(
+                    CodeSpan("    return ", token="keyword.control"),
+                    CodeSpan("run", token="name.function"),
+                    CodeSpan("(module, passes)", token="punctuation"),
+                    background_style="white",
+                ),
+                language="python",
+            ).frame(width=pt(760)),
+            Text("Token scopes resolve through the active theme.")
+            .font("caption")
+            .foreground_style("muted"),
+            spacing=pt(28),
         ).padding(pt(40))
 
 
