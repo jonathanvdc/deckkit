@@ -6,6 +6,7 @@ import pytest
 
 from deckkit import Compiler
 from deckkit.backends import pptx, svg
+from deckkit.expanded_views import ExpandedText
 from deckkit.fonts import (
     FileFontResolver,
     Font,
@@ -72,6 +73,54 @@ def test_missing_role_is_actionable(font):
             ClarityTheme(),
             font_resolver=FileFontResolver({Font("Aptos"): font}),
         ).compile_view(Text("Hello").font("missing"))
+
+
+def test_verbatim_flow_keeps_code_layout(compiler, tmp_path):
+    from pptx import Presentation
+
+    source = "\tindented\n\n  spaced"
+    compiled = compiler.compile_view(Text(source, flow="verbatim"))
+    expanded = next(
+        node for node in compiled.expanded_tree.walk() if isinstance(node, ExpandedText)
+    )
+    drawable = compiled.drawable.children[0]
+
+    assert expanded.flow == "verbatim"
+    assert drawable.metrics.lines == ("    indented", "", "  spaced")
+
+    elements = ET.fromstring(svg.render(compiled.drawable)).findall(
+        ".//{http://www.w3.org/2000/svg}text"
+    )
+    assert [element.text for element in elements] == ["    indented", None, "  spaced"]
+    assert all(
+        element.attrib["{http://www.w3.org/XML/1998/namespace}space"] == "preserve"
+        for element in elements
+    )
+
+    path = tmp_path / "preserved-whitespace.pptx"
+    from deckkit import CompiledDeck
+
+    pptx.render(CompiledDeck.from_views(compiled), path)
+    paragraphs = Presentation(path).slides[0].shapes[0].text_frame.paragraphs
+    assert [paragraph.text for paragraph in paragraphs] == [
+        "    indented",
+        "",
+        "  spaced",
+    ]
+
+
+def test_verbatim_flow_does_not_wrap(compiler):
+    from deckkit.layout import LayoutOverflow
+
+    with pytest.raises(LayoutOverflow):
+        compiler.compile_view(
+            Text("one two three", flow="verbatim").frame(width=pt(20))
+        )
+
+
+def test_text_rejects_unknown_flow():
+    with pytest.raises(ValueError, match="flow"):
+        Text("Invalid", flow="collapse")  # type: ignore[arg-type]
 
 
 def test_editorial_is_an_example_subclass(font):

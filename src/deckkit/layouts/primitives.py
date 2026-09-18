@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 from ..fonts import Font
 from ..layout import Constraints, LayoutChild, LayoutContext, LayoutPlan
+from ..measurement import TextFlow
 from ..units import Length
 from ._content import content
 
@@ -15,13 +16,17 @@ class TextLayout:
     font: Font
     font_size: Length
     line_spacing: float
+    flow: TextFlow = "wrapped"
 
     def measure(
         self, c: Constraints, children: Sequence[LayoutChild], context: LayoutContext
     ) -> LayoutPlan:
         font = context.font_resolver.resolve(self.font)
-        metrics = context.measurer.measure(
-            self.text, font, self.font_size, c.max_width, self.line_spacing
+        arguments = (self.text, font, self.font_size, c.max_width, self.line_spacing)
+        metrics = (
+            context.measurer.measure(*arguments, self.flow)
+            if self.flow == "verbatim"
+            else context.measurer.measure(*arguments)
         )
         return content(metrics.width, metrics.height, metrics=metrics, font=font)
 

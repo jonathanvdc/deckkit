@@ -22,7 +22,7 @@ from .fonts import Font, ResolvedFont
 from .geometry import Point
 from .identity import KeyScope, ViewIdentity
 from .layout import Layout, LayoutPlan
-from .measurement import TextMetrics
+from .measurement import TextFlow, TextMetrics
 from .units import Length
 from .views.view import Modifier
 
@@ -140,6 +140,7 @@ class ExpandedText(ExpandedPrimitive):
     font_size: Length = tracked_field()
     color: str = tracked_field()
     line_spacing: float = tracked_field()
+    flow: TextFlow = tracked_field()
 
     def make_drawable(
         self,

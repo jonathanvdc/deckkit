@@ -86,6 +86,7 @@ def check_api(compiler: Compiler) -> None:
     assert_type(compiler.environment.get(CustomEnvironmentKey), int)
     text = Text("Hello").font("title").padding().frame(width=pt(100)).key("title")
     assert_type(text, Text)
+    assert_type(Text("    code", flow="verbatim"), Text)
     assert_type(Text("Custom").environment(CustomEnvironmentKey, 1), Text)
     Text("Invalid").environment(CustomEnvironmentKey, "wrong")  # type: ignore[misc]
     assert_type(

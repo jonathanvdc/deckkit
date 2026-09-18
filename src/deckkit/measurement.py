@@ -5,13 +5,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Protocol
+from typing import Literal, Protocol
 
 import uharfbuzz as hb
 from PIL import ImageFont
 
 from .fonts import ResolvedFont
 from .units import Length, pt, require_length
+
+TextFlow = Literal["wrapped", "verbatim"]
 
 
 @dataclass(frozen=True)
@@ -33,6 +35,7 @@ class TextMeasurer(Protocol):
         size: Length,
         width: Length,
         line_spacing: float,
+        flow: TextFlow = "wrapped",
     ) -> TextMetrics: ...
 
 
@@ -57,6 +60,7 @@ class PillowMeasurer:
         size: Length,
         width: Length,
         line_spacing: float = 1.1,
+        flow: TextFlow = "wrapped",
     ) -> TextMetrics:
         require_length(size)
         require_length(width)
@@ -76,17 +80,20 @@ class PillowMeasurer:
                 / shaping_font.face.upem
             )
 
-        lines = []
-        for paragraph in text.split("\n"):
-            line = ""
-            for word in paragraph.split():
-                candidate = f"{line} {word}" if line else word
-                if line and length(candidate) > width.points:
-                    lines.append(line)
-                    line = word
-                else:
-                    line = candidate
-            lines.append(line)
+        if flow == "verbatim":
+            lines = text.expandtabs(4).split("\n")
+        else:
+            lines = []
+            for paragraph in text.split("\n"):
+                line = ""
+                for word in paragraph.split():
+                    candidate = f"{line} {word}" if line else word
+                    if line and length(candidate) > width.points:
+                        lines.append(line)
+                        line = word
+                    else:
+                        line = candidate
+                lines.append(line)
         ascent, descent = (v / 4 for v in font.getmetrics())
         line_height = (ascent + descent) * line_spacing
         family, style = font.getname()

@@ -54,6 +54,7 @@ def render(layout: Drawable) -> str:
                     y=str(y + m.ascent.points + i * m.line_height.points),
                     fill=node.color,
                     attrib={
+                        "{http://www.w3.org/XML/1998/namespace}space": "preserve",
                         "font-family": node.font.family,
                         "font-size": str(node.font_size.points),
                         "font-weight": "bold" if node.font.bold else "normal",
