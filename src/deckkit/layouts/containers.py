@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal
 
+from ..geometry import RelativePoint
 from ..layout import (
     Constraints,
     LayoutChild,
@@ -82,6 +83,8 @@ class StackLayout:
 
 @dataclass(frozen=True)
 class OverlayLayout:
+    alignment: RelativePoint = RelativePoint.center
+
     def measure(
         self, c: Constraints, children: Sequence[LayoutChild], context: LayoutContext
     ) -> LayoutPlan:
@@ -90,13 +93,24 @@ class OverlayLayout:
         ]
         width = max([c.min_width] + [plan.width for plan in intrinsic])
         height = max([c.min_height] + [plan.height for plan in intrinsic])
-        # The exact second proposal lets proposal-responsive children fill the
-        # overlay while intrinsic content retains centered content geometry.
         allocation = Constraints(width, height, width, height)
+        placements = []
+        for child, ideal in zip(children, intrinsic):
+            proposed = child.measure(allocation)
+            proposed_content = proposed.properties.get("content_size")
+            plan = proposed if proposed_content == (width, height) else ideal
+            placements.append(
+                Placement(
+                    child,
+                    plan,
+                    (width - plan.width) * self.alignment.x,
+                    (height - plan.height) * self.alignment.y,
+                )
+            )
         return content(
             width,
             height,
-            tuple(Placement(child, child.measure(allocation)) for child in children),
+            tuple(placements),
         )
 
 

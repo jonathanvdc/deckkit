@@ -35,7 +35,7 @@ from deckkit.views import (
     Text,
     View,
 )
-from deckkit.views.semantic import Metric, Pill, Pipeline, PipelineStage
+from deckkit.views.semantic import Card, Metric, Pill, Pipeline, PipelineStage
 
 
 class CustomLayout:
@@ -93,6 +93,7 @@ def check_api(compiler: Compiler) -> None:
         Metric,
     )
     assert_type(Pill(HStack(Text("New"), Text("label"))), Pill)
+    assert_type(Card(HStack(Text("Heading"), Text("content"))), Card)
     assert_type(
         Pipeline(PipelineStage(Text("Parse")), PipelineStage(Text("Optimize"))),
         Pipeline,

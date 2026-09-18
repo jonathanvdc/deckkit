@@ -17,6 +17,7 @@ from deckkit.units import pt
 from deckkit.views import Context, HStack, Rectangle, Text, View, VStack
 from deckkit.views.semantic import (
     BeforeAfter,
+    Card,
     Metric,
     Pill,
     Pipeline,
@@ -129,6 +130,15 @@ def test_pill_accepts_any_view_and_before_after_uses_pills(compiler):
         ).points == pytest.approx(
             (background.bounds.y + background.bounds.height / 2).points
         )
+    cards = [
+        node
+        for node in comparison.drawable.walk()
+        if isinstance(node, DrawableRectangle) and node.bounds.width > pt(88)
+    ]
+    assert len(cards) == 2
+    for pill_background, card_background in zip(backgrounds, cards):
+        assert pill_background.bounds.x == card_background.bounds.x + pt(20)
+        assert pill_background.bounds.y == card_background.bounds.y + pt(20)
 
 
 def test_theme_hook_applies_to_all_semantic_types(font):
@@ -208,6 +218,7 @@ def test_keyed_children_survive_recipe_changes(font):
         lambda: Metric(Text("value"), "label"),
         lambda: PipelineStage("label"),
         lambda: Pill("label"),
+        lambda: Card("content"),
     ],
 )
 def test_semantic_content_requires_views(factory):

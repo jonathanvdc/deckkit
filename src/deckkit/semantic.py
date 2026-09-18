@@ -2,6 +2,7 @@
 
 from .views.semantic import (
     BeforeAfter,
+    Card,
     Metric,
     Pill,
     Pipeline,
@@ -11,6 +12,7 @@ from .views.semantic import (
 
 __all__ = [
     "BeforeAfter",
+    "Card",
     "Metric",
     "Pill",
     "Pipeline",

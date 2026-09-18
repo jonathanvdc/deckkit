@@ -10,6 +10,7 @@ from ..hstack import HStack
 from ..text import Text
 from ..view import View
 from ..vstack import VStack
+from .card import Card
 from .pill import Pill
 from .semantic_view import SemanticView
 
@@ -45,23 +46,27 @@ class BeforeAfter(SemanticView):
     def default_body(self, context: Context) -> View:
         """Arrange the comparison using the default horizontal recipe."""
         label_width, label_height = pt(88), pt(36)
-        before = VStack(
-            Pill(Text("BEFORE").font("caption")).frame(
-                width=label_width, height=label_height
-            ),
-            self.before,
+        before = Card(
+            VStack(
+                Pill(Text("BEFORE").font("caption")).frame(
+                    width=label_width, height=label_height
+                ),
+                self.before,
+            )
         ).flex()
-        after = VStack(
-            Pill(
-                Text("AFTER").font("caption"),
-                background_style="accent",
-                content_style="white",
-            ).frame(width=label_width, height=label_height),
-            self.after.foreground_style("accent"),
+        after = Card(
+            VStack(
+                Pill(
+                    Text("AFTER").font("caption"),
+                    background_style="accent",
+                    content_style="white",
+                ).frame(width=label_width, height=label_height),
+                self.after.foreground_style("accent"),
+            )
         ).flex()
         return VStack(
             self.title.font("title"),
-            HStack(before, Text("→"), after, spacing=pt(24)),
+            HStack(before, after, spacing=pt(24)),
             self.takeaway,
             spacing=pt(32),
         )

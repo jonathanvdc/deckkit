@@ -158,8 +158,8 @@ objects with a `points` field.
 Semantic content slots accept views, including nested composites:
 
 ```python
-from deckkit.views import HStack, Text
-from deckkit.views.semantic import BeforeAfter, Metric, Pill, Pipeline, PipelineStage
+from deckkit.views import HStack, Text, VStack
+from deckkit.views.semantic import BeforeAfter, Card, Metric, Pill, Pipeline, PipelineStage
 
 pipeline = Pipeline(
     PipelineStage(Text("Parse")),
@@ -168,6 +168,7 @@ pipeline = Pipeline(
 )
 
 status = Pill(Text("READY"))
+summary = Card(VStack(Text("Heading"), Text("Supporting content")))
 
 comparison = BeforeAfter(
     title=Text("A simpler pipeline"),
@@ -181,7 +182,7 @@ All semantic components inherit `SemanticView`. Its `body(context)` asks
 `theme.render_semantic(component, context)` for a view. Returning `None` selects
 `component.default_body(context)`. Themes can override built-in or application-defined
 semantic types through this single hook. Recipes remain ordinary view composition.
-`Metric.value`, `Metric.label`, `Pill.content`, `PipelineStage.label`, and every
+`Metric.value`, `Metric.label`, `Pill.content`, `Card.content`, `PipelineStage.label`, and every
 `BeforeAfter` content slot require views; wrap strings in `Text(...)`. A `Pill` can
 therefore contain text or richer composed content. Style tokens such as
 `PipelineStage.emphasis` remain strings. Explicit child styles override inherited

@@ -1,6 +1,7 @@
 """Semantic presentation components with overridable theme recipes."""
 
 from .before_after import BeforeAfter
+from .card import Card
 from .metric import Metric
 from .pill import Pill
 from .pipeline import Pipeline
@@ -9,6 +10,7 @@ from .semantic_view import SemanticView
 
 __all__ = [
     "BeforeAfter",
+    "Card",
     "Metric",
     "Pill",
     "Pipeline",

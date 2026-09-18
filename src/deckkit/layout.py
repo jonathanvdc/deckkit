@@ -119,21 +119,10 @@ def checked(plan: LayoutPlan, c: Constraints, identity: str | None) -> LayoutPla
         raise LayoutOverflow(
             identity, (c.max_width, c.max_height), (plan.width, plan.height)
         )
-    width, height = max(plan.width, c.min_width), max(plan.height, c.min_height)
-    dx, dy = (width - plan.width) / 2, (height - plan.height) / 2
-    content_x, content_y = plan.properties.get("content_offset", (pt(0), pt(0)))
     return replace(
         plan,
-        width=width,
-        height=height,
-        placements=tuple(
-            replace(placement, x=placement.x + dx, y=placement.y + dy)
-            for placement in plan.placements
-        ),
-        properties=dict(
-            plan.properties,
-            content_offset=(content_x + dx, content_y + dy),
-        ),
+        width=max(plan.width, c.min_width),
+        height=max(plan.height, c.min_height),
     )
 
 

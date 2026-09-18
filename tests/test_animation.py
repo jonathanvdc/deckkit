@@ -205,7 +205,7 @@ def test_results_slide_resizes_chart_discretely(compiler):
         and isinstance(effect.before.drawable, DrawableText)
     )
     assert chart_rectangle.kind is PptxBehaviorKind.DISCRETE
-    assert chart_label.kind is PptxBehaviorKind.DISCRETE
+    assert chart_label.kind is PptxBehaviorKind.MOTION
     assert not planned.diagnostics
 
 
