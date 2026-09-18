@@ -6,6 +6,7 @@ from .drawable import Drawable, DrawableMetadata
 from .group import DrawableGroup
 from .image import DrawableImage
 from .rectangle import DrawableRectangle
+from .rich_text import DrawableRichText
 from .text import DrawableText
 
 __all__ = [
@@ -16,5 +17,6 @@ __all__ = [
     "DrawableImage",
     "DrawableMetadata",
     "DrawableRectangle",
+    "DrawableRichText",
     "DrawableText",
 ]

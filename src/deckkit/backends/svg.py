@@ -9,6 +9,7 @@ from ..drawables import (
     DrawableGroup,
     DrawableImage,
     DrawableRectangle,
+    DrawableRichText,
     DrawableText,
 )
 
@@ -102,7 +103,7 @@ def render(layout: Drawable) -> str:
                     SubElement(marker, "path", d="M 0 0 L 6 3 L 0 6 z", fill=node.color)
                     attributes[attribute] = f"url(#{marker_id})"
             SubElement(group, "line", attributes)
-        elif not isinstance(node, DrawableGroup):
+        elif not isinstance(node, (DrawableGroup, DrawableRichText)):
             raise TypeError(f"SVG cannot render {type(node).__name__}")
         for child in node.children:
             visit(child, group)

@@ -16,12 +16,13 @@ from .drawables import (
     DrawableImage,
     DrawableMetadata,
     DrawableRectangle,
+    DrawableRichText,
     DrawableText,
 )
 from .geometry import Point
 from .identity import KeyScope, ViewIdentity
 from .layout import Layout, LayoutPlan
-from .measurement import RichTextMetrics, StyledTextLine, TextFlow, TextMetrics
+from .measurement import MeasuredRichText, MeasuredText, StyledTextLine, TextFlow
 from .units import Length
 from .views.view import Modifier
 
@@ -151,10 +152,10 @@ class ExpandedText(ExpandedPrimitive):
         metadata: DrawableMetadata,
         children: tuple[Drawable, ...],
     ) -> Drawable:
-        rich_metrics = plan.properties["rich_metrics"]
-        if not isinstance(rich_metrics, RichTextMetrics):
-            raise TypeError("Text layout must produce RichTextMetrics")
-        runs = tuple(run for line in rich_metrics.lines for run in line.runs)
+        measured_text = plan.properties["measured_text"]
+        if not isinstance(measured_text, MeasuredRichText):
+            raise TypeError("Text layout must produce MeasuredRichText")
+        runs = tuple(run for line in measured_text.lines for run in line.runs)
         first = runs[0]
         first_style = (
             first.font,
@@ -162,18 +163,18 @@ class ExpandedText(ExpandedPrimitive):
             first.font_size,
             first.color,
         )
-        if all(line.background is None for line in rich_metrics.lines) and all(
+        if all(line.background is None for line in measured_text.lines) and all(
             run.background is None
             and (run.font, run.requested_font, run.font_size, run.color) == first_style
             for run in runs
         ):
-            metrics = TextMetrics(
+            metrics = MeasuredText(
                 tuple(
                     "".join(run.text for run in line.runs)
-                    for line in rich_metrics.lines
+                    for line in measured_text.lines
                 ),
-                rich_metrics.width,
-                rich_metrics.height,
+                measured_text.width,
+                measured_text.height,
                 first.metrics.ascent,
                 first.metrics.line_height,
                 first.metrics.family,
@@ -197,7 +198,7 @@ class ExpandedText(ExpandedPrimitive):
         if not isinstance(line_width, Length):
             raise TypeError("Text layout must produce a line width")
         y = content_bounds.y
-        for line_index, line in enumerate(rich_metrics.lines):
+        for line_index, line in enumerate(measured_text.lines):
             if line.background is not None:
                 line_bounds = Bounds(
                     content_bounds.x,
@@ -253,7 +254,14 @@ class ExpandedText(ExpandedPrimitive):
                     )
                 )
             y += line.height
-        return DrawableGroup(self.identity, bounds, metadata, tuple(drawables))
+        return DrawableRichText(
+            self.identity,
+            bounds,
+            metadata,
+            content_bounds,
+            measured_text,
+            tuple(drawables),
+        )
 
 
 @dataclass(frozen=True)

@@ -17,7 +17,7 @@ class TextLayout:
     def measure(
         self, c: Constraints, children: Sequence[LayoutChild], context: LayoutContext
     ) -> LayoutPlan:
-        rich_metrics = layout_styled_text(
+        measured_text = layout_styled_text(
             context.measurer,
             context.font_resolver,
             self.styled_lines,
@@ -25,10 +25,10 @@ class TextLayout:
             self.flow,
         )
         return content(
-            rich_metrics.width,
-            rich_metrics.height,
-            rich_metrics=rich_metrics,
-            line_width=max(rich_metrics.width, c.min_width),
+            measured_text.width,
+            measured_text.height,
+            measured_text=measured_text,
+            line_width=max(measured_text.width, c.min_width),
         )
 
 

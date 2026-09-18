@@ -14,6 +14,7 @@ from ..drawables import (
     DrawableGroup,
     DrawableImage,
     DrawableRectangle,
+    DrawableRichText,
     DrawableText,
 )
 from .pptx_animation import PptxBehaviorKind, PptxTrigger, plan_slide
@@ -31,7 +32,9 @@ def _add_node(slide: Any, node: Drawable, *, name: str | None = None) -> Any:
     from pptx.oxml.xmlchemy import OxmlElement
     from pptx.util import Pt
 
-    if isinstance(node, (DrawableText, DrawableRectangle, DrawableImage)):
+    if isinstance(
+        node, (DrawableText, DrawableRichText, DrawableRectangle, DrawableImage)
+    ):
         b = node.content_bounds
         x, y, w, h = b.x.points, b.y.points, b.width.points, b.height.points
     if isinstance(node, DrawableRectangle):
@@ -50,6 +53,28 @@ def _add_node(slide: Any, node: Drawable, *, name: str | None = None) -> Any:
         shape.fill.solid()
         shape.fill.fore_color.rgb = _color(node.color)
         shape.line.fill.background()
+    elif isinstance(node, DrawableRichText):
+        for child in node.children:
+            if isinstance(child, DrawableRectangle):
+                _add_node(slide, child)
+        shape = slide.shapes.add_textbox(Pt(x), Pt(y), Pt(max(w, 1)), Pt(h))
+        tf = shape.text_frame
+        tf.clear()
+        tf.margin_left = tf.margin_right = tf.margin_top = tf.margin_bottom = 0
+        tf.word_wrap = False
+        tf.auto_size = MSO_AUTO_SIZE.NONE
+        for line_index, visual_line in enumerate(node.metrics.lines):
+            paragraph = tf.paragraphs[0] if line_index == 0 else tf.add_paragraph()
+            paragraph.space_before = paragraph.space_after = Pt(0)
+            paragraph.line_spacing = Pt(visual_line.height.points)
+            for measured_run in visual_line.runs:
+                run = paragraph.add_run()
+                run.text = measured_run.text
+                run.font.name = measured_run.font.family
+                run.font.size = Pt(measured_run.font_size.points)
+                run.font.bold = measured_run.font.bold
+                run.font.italic = measured_run.font.italic
+                run.font.color.rgb = _color(measured_run.color)
     elif isinstance(node, DrawableText):
         m = node.metrics
         shape = slide.shapes.add_textbox(Pt(x), Pt(y), Pt(max(w, 1)), Pt(h))
@@ -140,7 +165,20 @@ def render(deck: CompiledDeck, path: str | PathLike[str]) -> None:
 
 
 def _leaf_index(root: Drawable) -> dict[str, Drawable]:
-    return {node.identity: node for node in root.walk() if not node.children}
+    return {
+        node.identity: node
+        for node in _pptx_nodes(root)
+        if isinstance(node, DrawableRichText) or not node.children
+    }
+
+
+def _pptx_nodes(root: Drawable) -> list[Drawable]:
+    """Flatten a drawable tree while keeping rich text atomic for PowerPoint."""
+    result = [root]
+    if not isinstance(root, DrawableRichText):
+        for child in root.children:
+            result.extend(_pptx_nodes(child))
+    return result
 
 
 def _element(name: str, **attributes: object) -> Any:
@@ -415,7 +453,7 @@ def _render_slide(prs: Any, compiled_slide: CompiledSlide) -> None:
     initial = compiled_slide.initial.drawable
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     if not compiled_slide.is_animated:
-        for node in initial.walk():
+        for node in _pptx_nodes(initial):
             _add_node(slide, node)
         return
     shape_ids: dict[tuple[str, int], int] = {}

@@ -6,7 +6,11 @@ import pytest
 
 from deckkit import Compiler
 from deckkit.backends import pptx, svg
-from deckkit.drawables import DrawableGroup, DrawableRectangle, DrawableText
+from deckkit.drawables import (
+    DrawableRectangle,
+    DrawableRichText,
+    DrawableText,
+)
 from deckkit.expanded_views import ExpandedText
 from deckkit.fonts import (
     FileFontResolver,
@@ -140,7 +144,7 @@ def test_structured_text_materializes_styled_runs_and_backgrounds(compiler, tmp_
         ).frame(width=pt(240))
     )
     group = compiled.drawable.children[0]
-    assert isinstance(group, DrawableGroup)
+    assert isinstance(group, DrawableRichText)
     runs = [node for node in group.children if isinstance(node, DrawableText)]
     backgrounds = [
         node for node in group.children if isinstance(node, DrawableRectangle)
@@ -170,7 +174,17 @@ def test_structured_text_materializes_styled_runs_and_backgrounds(compiler, tmp_
         for shape in Presentation(path).slides[0].shapes
         if shape.has_text_frame and shape.text
     ]
-    assert shape_text == ["def", " greet", "(name):"]
+    assert shape_text == ["def greet(name):"]
+    text_shape = next(
+        shape
+        for shape in Presentation(path).slides[0].shapes
+        if shape.has_text_frame and shape.text
+    )
+    assert [run.text for run in text_shape.text_frame.paragraphs[0].runs] == [
+        "def",
+        " greet",
+        "(name):",
+    ]
 
 
 def test_structured_text_wraps_across_span_boundaries(compiler):
@@ -184,7 +198,7 @@ def test_structured_text_wraps_across_span_boundaries(compiler):
         ).frame(width=pt(70))
     )
     group = compiled.drawable.children[0]
-    assert isinstance(group, DrawableGroup)
+    assert isinstance(group, DrawableRichText)
     runs = [node for node in group.children if isinstance(node, DrawableText)]
     backgrounds = [
         node for node in group.children if isinstance(node, DrawableRectangle)

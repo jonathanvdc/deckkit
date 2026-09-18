@@ -34,11 +34,11 @@ class StyledTextLine:
 
 
 @dataclass(frozen=True)
-class PositionedTextRun:
+class MeasuredTextRun:
     text: str
     x: Length
     width: Length
-    metrics: TextMetrics
+    metrics: MeasuredText
     font: ResolvedFont
     requested_font: Font
     font_size: Length
@@ -47,8 +47,8 @@ class PositionedTextRun:
 
 
 @dataclass(frozen=True)
-class VisualTextLine:
-    runs: tuple[PositionedTextRun, ...]
+class MeasuredTextLine:
+    runs: tuple[MeasuredTextRun, ...]
     width: Length
     height: Length
     ascent: Length
@@ -56,14 +56,14 @@ class VisualTextLine:
 
 
 @dataclass(frozen=True)
-class RichTextMetrics:
-    lines: tuple[VisualTextLine, ...]
+class MeasuredRichText:
+    lines: tuple[MeasuredTextLine, ...]
     width: Length
     height: Length
 
 
 @dataclass(frozen=True)
-class TextMetrics:
+class MeasuredText:
     lines: tuple[str, ...]
     width: Length
     height: Length
@@ -82,7 +82,7 @@ class TextMeasurer(Protocol):
         width: Length,
         line_spacing: float,
         flow: TextFlow = "wrapped",
-    ) -> TextMetrics: ...
+    ) -> MeasuredText: ...
 
 
 class PillowMeasurer:
@@ -107,7 +107,7 @@ class PillowMeasurer:
         width: Length,
         line_spacing: float = 1.1,
         flow: TextFlow = "wrapped",
-    ) -> TextMetrics:
+    ) -> MeasuredText:
         require_length(size)
         require_length(width)
         font = PillowMeasurer._font(face.path, face.index, size.points)
@@ -143,7 +143,7 @@ class PillowMeasurer:
         ascent, descent = (v / 4 for v in font.getmetrics())
         line_height = (ascent + descent) * line_spacing
         family, style = font.getname()
-        return TextMetrics(
+        return MeasuredText(
             tuple(lines),
             pt(max(map(length, lines), default=0)),
             pt(len(lines) * line_height),
@@ -160,7 +160,7 @@ def layout_styled_text(
     lines: tuple[StyledTextLine, ...],
     width: Length,
     flow: TextFlow,
-) -> RichTextMetrics:
+) -> MeasuredRichText:
     """Shape and wrap styled logical lines into positioned visual runs."""
 
     @dataclass(frozen=True)
@@ -168,7 +168,7 @@ def layout_styled_text(
         text: str
         source: StyledTextSpan
         font: ResolvedFont
-        metrics: TextMetrics
+        metrics: MeasuredText
 
         @property
         def width(self) -> Length:
@@ -225,7 +225,7 @@ def layout_styled_text(
         pieces: list[Piece],
         background: str | None,
         fallback: StyledTextSpan,
-    ) -> VisualTextLine:
+    ) -> MeasuredTextLine:
         if not pieces:
             pieces = [piece("", fallback)]
         ascent = max((item.metrics.ascent for item in pieces), default=pt(0))
@@ -234,7 +234,7 @@ def layout_styled_text(
         runs = []
         for item in pieces:
             runs.append(
-                PositionedTextRun(
+                MeasuredTextRun(
                     item.text,
                     x,
                     item.width,
@@ -247,9 +247,9 @@ def layout_styled_text(
                 )
             )
             x += item.width
-        return VisualTextLine(tuple(runs), x, height, ascent, background)
+        return MeasuredTextLine(tuple(runs), x, height, ascent, background)
 
-    visual_lines: list[VisualTextLine] = []
+    visual_lines: list[MeasuredTextLine] = []
     for logical in lines:
         if flow == "verbatim":
             visual_lines.append(
@@ -275,7 +275,7 @@ def layout_styled_text(
             current.extend(word)
             current_width += word_width
         visual_lines.append(visual(current, logical.background, logical.spans[0]))
-    return RichTextMetrics(
+    return MeasuredRichText(
         tuple(visual_lines),
         max((line.width for line in visual_lines), default=pt(0)),
         sum((line.height for line in visual_lines), pt(0)),

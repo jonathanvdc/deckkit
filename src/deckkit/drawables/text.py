@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..fonts import Font, ResolvedFont
-from ..measurement import TextMetrics
+from ..measurement import MeasuredText
 from ..units import Length
 from .bounds import Bounds
 from .drawable import Drawable
@@ -17,4 +17,4 @@ class DrawableText(Drawable):
     font: ResolvedFont
     requested_font: Font
     font_size: Length
-    metrics: TextMetrics
+    metrics: MeasuredText
