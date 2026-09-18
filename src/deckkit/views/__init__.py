@@ -14,7 +14,7 @@ from .layout_view import LayoutView
 from .rectangle import Rectangle
 from .slide import Slide
 from .stack import Stack
-from .text import Text
+from .text import Text, TextLine, TextSpan
 from .view import Modifier, View
 from .vstack import VStack
 from .zstack import ZStack
@@ -34,6 +34,8 @@ __all__ = [
     "Stack",
     "State",
     "Text",
+    "TextLine",
+    "TextSpan",
     "VStack",
     "View",
     "ZStack",

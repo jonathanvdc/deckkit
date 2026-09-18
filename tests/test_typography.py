@@ -6,6 +6,7 @@ import pytest
 
 from deckkit import Compiler
 from deckkit.backends import pptx, svg
+from deckkit.drawables import DrawableGroup, DrawableRectangle, DrawableText
 from deckkit.expanded_views import ExpandedText
 from deckkit.fonts import (
     FileFontResolver,
@@ -13,7 +14,7 @@ from deckkit.fonts import (
 )
 from deckkit.themes import ClarityTheme, TextStyle
 from deckkit.units import pt
-from deckkit.views import Text, VStack
+from deckkit.views import Text, TextLine, TextSpan, VStack
 from examples.themes import EditorialTheme
 
 
@@ -122,6 +123,77 @@ def test_verbatim_flow_does_not_wrap(compiler):
 def test_text_rejects_unknown_flow():
     with pytest.raises(ValueError, match="flow"):
         Text("Invalid", flow="collapse")  # type: ignore[arg-type]
+
+
+def test_structured_text_materializes_styled_runs_and_backgrounds(compiler, tmp_path):
+    from pptx import Presentation
+
+    compiled = compiler.compile_view(
+        Text(
+            TextLine(
+                TextSpan("def", foreground_style="accent"),
+                TextSpan(" greet", background_style="#FFF2A8"),
+                TextSpan("(name):"),
+                background_style="surface",
+            ),
+            flow="verbatim",
+        ).frame(width=pt(240))
+    )
+    group = compiled.drawable.children[0]
+    assert isinstance(group, DrawableGroup)
+    runs = [node for node in group.children if isinstance(node, DrawableText)]
+    backgrounds = [
+        node for node in group.children if isinstance(node, DrawableRectangle)
+    ]
+
+    assert [run.text for run in runs] == ["def", " greet", "(name):"]
+    assert runs[0].color == "#087F8C"
+    assert [background.color for background in backgrounds] == [
+        "#E8EEF5",
+        "#FFF2A8",
+    ]
+    assert backgrounds[0].bounds.width == pt(240)
+    assert backgrounds[1].bounds.x == runs[1].bounds.x
+    assert backgrounds[1].bounds.width == runs[1].bounds.width
+
+    rendered_svg = svg.render(compiled.drawable)
+    assert "#E8EEF5" in rendered_svg
+    assert "#FFF2A8" in rendered_svg
+    assert ">def<" in rendered_svg
+
+    path = tmp_path / "structured-text.pptx"
+    from deckkit import CompiledDeck
+
+    pptx.render(CompiledDeck.from_views(compiled), path)
+    shape_text = [
+        shape.text
+        for shape in Presentation(path).slides[0].shapes
+        if shape.has_text_frame and shape.text
+    ]
+    assert shape_text == ["def", " greet", "(name):"]
+
+
+def test_structured_text_wraps_across_span_boundaries(compiler):
+    compiled = compiler.compile_view(
+        Text(
+            TextLine(
+                TextSpan("alpha "),
+                TextSpan("beta gamma", foreground_style="accent"),
+                background_style="surface",
+            )
+        ).frame(width=pt(70))
+    )
+    group = compiled.drawable.children[0]
+    assert isinstance(group, DrawableGroup)
+    runs = [node for node in group.children if isinstance(node, DrawableText)]
+    backgrounds = [
+        node for node in group.children if isinstance(node, DrawableRectangle)
+    ]
+
+    assert "".join(run.text for run in runs).replace(" ", "") == "alphabetagamma"
+    assert len({run.bounds.y for run in runs}) > 1
+    assert len(backgrounds) > 1
+    assert all(background.bounds.width == pt(70) for background in backgrounds)
 
 
 def test_editorial_is_an_example_subclass(font):

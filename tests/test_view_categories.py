@@ -90,7 +90,8 @@ def test_composite_and_primitive_share_inherited_environment(compiler):
 
     assert observed == [("title", "accent")]
     assert isinstance(text, ExpandedText)
-    assert text.color == compiler.environment.theme.color("accent")
+    span = text.styled_lines[0].spans[0]
+    assert span.color == compiler.environment.theme.color("accent")
 
 
 def test_custom_environment_modifier_reaches_subtree(compiler):

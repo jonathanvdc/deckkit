@@ -18,11 +18,10 @@ from .drawables import (
     DrawableRectangle,
     DrawableText,
 )
-from .fonts import Font, ResolvedFont
 from .geometry import Point
 from .identity import KeyScope, ViewIdentity
 from .layout import Layout, LayoutPlan
-from .measurement import TextFlow, TextMetrics
+from .measurement import RichTextMetrics, StyledTextLine, TextFlow, TextMetrics
 from .units import Length
 from .views.view import Modifier
 
@@ -135,12 +134,14 @@ class ExpandedComponent(ExpandedContainer):
 
 @dataclass(frozen=True)
 class ExpandedText(ExpandedPrimitive):
-    text: str = tracked_field()
-    requested_font: Font = tracked_field()
-    font_size: Length = tracked_field()
-    color: str = tracked_field()
-    line_spacing: float = tracked_field()
     flow: TextFlow = tracked_field()
+    styled_lines: tuple[StyledTextLine, ...] = tracked_field()
+
+    @property
+    def text(self) -> str:
+        return "\n".join(
+            "".join(span.text for span in line.spans) for line in self.styled_lines
+        )
 
     def make_drawable(
         self,
@@ -150,24 +151,109 @@ class ExpandedText(ExpandedPrimitive):
         metadata: DrawableMetadata,
         children: tuple[Drawable, ...],
     ) -> Drawable:
-        metrics = plan.properties["metrics"]
-        if not isinstance(metrics, TextMetrics):
-            raise TypeError("Text layout must produce TextMetrics")
-        font = plan.properties["font"]
-        if not isinstance(font, ResolvedFont):
-            raise TypeError("Text layout must produce a ResolvedFont")
-        return DrawableText(
-            self.identity,
-            bounds,
-            metadata,
-            content_bounds,
-            self.text,
-            self.color,
-            font,
-            self.requested_font,
-            self.font_size,
-            metrics,
+        rich_metrics = plan.properties["rich_metrics"]
+        if not isinstance(rich_metrics, RichTextMetrics):
+            raise TypeError("Text layout must produce RichTextMetrics")
+        runs = tuple(run for line in rich_metrics.lines for run in line.runs)
+        first = runs[0]
+        first_style = (
+            first.font,
+            first.requested_font,
+            first.font_size,
+            first.color,
         )
+        if all(line.background is None for line in rich_metrics.lines) and all(
+            run.background is None
+            and (run.font, run.requested_font, run.font_size, run.color) == first_style
+            for run in runs
+        ):
+            metrics = TextMetrics(
+                tuple(
+                    "".join(run.text for run in line.runs)
+                    for line in rich_metrics.lines
+                ),
+                rich_metrics.width,
+                rich_metrics.height,
+                first.metrics.ascent,
+                first.metrics.line_height,
+                first.metrics.family,
+                first.metrics.style,
+            )
+            return DrawableText(
+                self.identity,
+                bounds,
+                metadata,
+                content_bounds,
+                self.text,
+                first.color,
+                first.font,
+                first.requested_font,
+                first.font_size,
+                metrics,
+            )
+
+        drawables: list[Drawable] = []
+        line_width = plan.properties["line_width"]
+        if not isinstance(line_width, Length):
+            raise TypeError("Text layout must produce a line width")
+        y = content_bounds.y
+        for line_index, line in enumerate(rich_metrics.lines):
+            if line.background is not None:
+                line_bounds = Bounds(
+                    content_bounds.x,
+                    y,
+                    line_width,
+                    line.height,
+                )
+                drawables.append(
+                    DrawableRectangle(
+                        f"{self.identity}/line:{line_index}:background",
+                        line_bounds,
+                        metadata,
+                        line_bounds,
+                        line.background,
+                    )
+                )
+            for run_index, run in enumerate(line.runs):
+                run_y = y + line.ascent - run.metrics.ascent
+                run_bounds = Bounds(
+                    content_bounds.x + run.x,
+                    run_y,
+                    run.width,
+                    line.height,
+                )
+                if run.background is not None:
+                    background_bounds = Bounds(
+                        run_bounds.x,
+                        y,
+                        run_bounds.width,
+                        line.height,
+                    )
+                    drawables.append(
+                        DrawableRectangle(
+                            f"{self.identity}/line:{line_index}/run:{run_index}:background",
+                            background_bounds,
+                            metadata,
+                            background_bounds,
+                            run.background,
+                        )
+                    )
+                drawables.append(
+                    DrawableText(
+                        f"{self.identity}/line:{line_index}/run:{run_index}",
+                        run_bounds,
+                        metadata,
+                        run_bounds,
+                        run.text,
+                        run.color,
+                        run.font,
+                        run.requested_font,
+                        run.font_size,
+                        run.metrics,
+                    )
+                )
+            y += line.height
+        return DrawableGroup(self.identity, bounds, metadata, tuple(drawables))
 
 
 @dataclass(frozen=True)

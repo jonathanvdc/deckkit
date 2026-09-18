@@ -5,15 +5,61 @@ from __future__ import annotations
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
+from re import finditer
 from typing import Literal, Protocol
 
 import uharfbuzz as hb
 from PIL import ImageFont
 
-from .fonts import ResolvedFont
+from .fonts import Font, FontResolver, ResolvedFont
 from .units import Length, pt, require_length
 
 TextFlow = Literal["wrapped", "verbatim"]
+
+
+@dataclass(frozen=True)
+class StyledTextSpan:
+    text: str
+    font: Font
+    size: Length
+    line_spacing: float
+    color: str
+    background: str | None = None
+
+
+@dataclass(frozen=True)
+class StyledTextLine:
+    spans: tuple[StyledTextSpan, ...]
+    background: str | None = None
+
+
+@dataclass(frozen=True)
+class PositionedTextRun:
+    text: str
+    x: Length
+    width: Length
+    metrics: TextMetrics
+    font: ResolvedFont
+    requested_font: Font
+    font_size: Length
+    color: str
+    background: str | None
+
+
+@dataclass(frozen=True)
+class VisualTextLine:
+    runs: tuple[PositionedTextRun, ...]
+    width: Length
+    height: Length
+    ascent: Length
+    background: str | None
+
+
+@dataclass(frozen=True)
+class RichTextMetrics:
+    lines: tuple[VisualTextLine, ...]
+    width: Length
+    height: Length
 
 
 @dataclass(frozen=True)
@@ -106,3 +152,131 @@ class PillowMeasurer:
             family or face.family,
             style or "Regular",
         )
+
+
+def layout_styled_text(
+    measurer: TextMeasurer,
+    resolver: FontResolver,
+    lines: tuple[StyledTextLine, ...],
+    width: Length,
+    flow: TextFlow,
+) -> RichTextMetrics:
+    """Shape and wrap styled logical lines into positioned visual runs."""
+
+    @dataclass(frozen=True)
+    class Piece:
+        text: str
+        source: StyledTextSpan
+        font: ResolvedFont
+        metrics: TextMetrics
+
+        @property
+        def width(self) -> Length:
+            return self.metrics.width
+
+    def piece(text: str, source: StyledTextSpan) -> Piece:
+        font = resolver.resolve(source.font)
+        metrics = measurer.measure(
+            text,
+            font,
+            source.size,
+            width,
+            source.line_spacing,
+            "verbatim",
+        )
+        return Piece(text, source, font, metrics)
+
+    def words(line: StyledTextLine) -> list[tuple[Piece | None, list[Piece]]]:
+        result: list[tuple[Piece | None, list[Piece]]] = []
+        pending_space: Piece | None = None
+        current: list[Piece] = []
+        for span in line.spans:
+            for match in finditer(r"\s+|\S+", span.text):
+                value = match.group()
+                if value.isspace():
+                    if current:
+                        result.append((pending_space, current))
+                        current = []
+                    pending_space = piece(" ", span)
+                else:
+                    current.append(piece(value, span))
+        if current:
+            result.append((pending_space, current))
+        return result
+
+    def preserved(line: StyledTextLine) -> list[Piece]:
+        result: list[Piece] = []
+        column = 0
+        for span in line.spans:
+            value = ""
+            for character in span.text:
+                if character == "\t":
+                    spaces = 4 - column % 4
+                    value += " " * spaces
+                    column += spaces
+                else:
+                    value += character
+                    column += 1
+            if value or not result:
+                result.append(piece(value, span))
+        return result
+
+    def visual(
+        pieces: list[Piece],
+        background: str | None,
+        fallback: StyledTextSpan,
+    ) -> VisualTextLine:
+        if not pieces:
+            pieces = [piece("", fallback)]
+        ascent = max((item.metrics.ascent for item in pieces), default=pt(0))
+        height = max((item.metrics.line_height for item in pieces), default=pt(0))
+        x = pt(0)
+        runs = []
+        for item in pieces:
+            runs.append(
+                PositionedTextRun(
+                    item.text,
+                    x,
+                    item.width,
+                    item.metrics,
+                    item.font,
+                    item.source.font,
+                    item.source.size,
+                    item.source.color,
+                    item.source.background,
+                )
+            )
+            x += item.width
+        return VisualTextLine(tuple(runs), x, height, ascent, background)
+
+    visual_lines: list[VisualTextLine] = []
+    for logical in lines:
+        if flow == "verbatim":
+            visual_lines.append(
+                visual(preserved(logical), logical.background, logical.spans[0])
+            )
+            continue
+        current: list[Piece] = []
+        current_width = pt(0)
+        for separator, word in words(logical):
+            separator_width = (
+                separator.width if separator is not None and current else pt(0)
+            )
+            word_width = sum((item.width for item in word), pt(0))
+            if current and current_width + separator_width + word_width > width:
+                visual_lines.append(
+                    visual(current, logical.background, logical.spans[0])
+                )
+                current, current_width = [], pt(0)
+                separator_width = pt(0)
+            if separator is not None and current:
+                current.append(separator)
+                current_width += separator_width
+            current.extend(word)
+            current_width += word_width
+        visual_lines.append(visual(current, logical.background, logical.spans[0]))
+    return RichTextMetrics(
+        tuple(visual_lines),
+        max((line.width for line in visual_lines), default=pt(0)),
+        sum((line.height for line in visual_lines), pt(0)),
+    )

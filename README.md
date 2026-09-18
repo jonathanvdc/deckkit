@@ -244,6 +244,29 @@ theme = BrandTheme()
 `.font("title")` selects the complete typography role; descendant overrides still
 win. Missing roles produce an actionable error.
 
+Text can also contain styled spans and logical lines. The compiler resolves theme
+roles, measures runs, and wraps them within the proposed width; author code never
+supplies text geometry. Span backgrounds cover the measured run, while a line
+background covers every visual line produced by wrapping:
+
+```python
+from deckkit.views import Text, TextLine, TextSpan
+
+source = Text(
+    TextLine(
+        TextSpan("def", foreground_style="accent"),
+        TextSpan(" greet", background_style="#FFF2A8"),
+        TextSpan("(name):"),
+        background_style="surface",
+    ),
+    TextLine(TextSpan('    return f"Hello, {name}"')),
+    flow="verbatim",
+)
+```
+
+Use `flow="wrapped"` for ordinary wrapping across span boundaries and
+`flow="verbatim"` to preserve spaces and logical lines without wrapping.
+
 
 ## Font resolution
 

@@ -33,6 +33,8 @@ from deckkit.views import (
     Rectangle,
     Slide,
     Text,
+    TextLine,
+    TextSpan,
     View,
 )
 from deckkit.views.semantic import Card, Metric, Pill, Pipeline, PipelineStage
@@ -87,6 +89,16 @@ def check_api(compiler: Compiler) -> None:
     text = Text("Hello").font("title").padding().frame(width=pt(100)).key("title")
     assert_type(text, Text)
     assert_type(Text("    code", flow="verbatim"), Text)
+    assert_type(
+        Text(
+            TextLine(
+                TextSpan("def", foreground_style="accent"),
+                TextSpan(" greet(name):"),
+            ),
+            flow="verbatim",
+        ),
+        Text,
+    )
     assert_type(Text("Custom").environment(CustomEnvironmentKey, 1), Text)
     Text("Invalid").environment(CustomEnvironmentKey, "wrong")  # type: ignore[misc]
     assert_type(
