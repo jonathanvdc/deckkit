@@ -32,15 +32,18 @@ def render(layout: Drawable) -> str:
             b = node.content_bounds
             x, y, w, h = b.x.points, b.y.points, b.width.points, b.height.points
         if isinstance(node, DrawableRectangle):
-            SubElement(
-                group,
-                "rect",
-                x=str(x),
-                y=str(y),
-                width=str(w),
-                height=str(h),
-                fill=node.color,
-            )
+            attributes = {
+                "x": str(x),
+                "y": str(y),
+                "width": str(w),
+                "height": str(h),
+                "fill": node.color,
+            }
+            if node.corner_radius.points > 0:
+                attributes["rx"] = attributes["ry"] = str(
+                    node.corner_radius.points
+                )
+            SubElement(group, "rect", attributes)
         elif isinstance(node, DrawableText):
             m = node.metrics
             for i, line in enumerate(m.lines):

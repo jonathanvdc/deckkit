@@ -172,6 +172,7 @@ class ExpandedText(ExpandedPrimitive):
 @dataclass(frozen=True)
 class ExpandedRectangle(ExpandedPrimitive):
     color: str = tracked_field()
+    corner_radius: Length = field(default=Length(0), metadata={"tracked": True})
 
     def make_drawable(
         self,
@@ -181,8 +182,20 @@ class ExpandedRectangle(ExpandedPrimitive):
         metadata: DrawableMetadata,
         children: tuple[Drawable, ...],
     ) -> Drawable:
+        effective_radius = Length(
+            min(
+                self.corner_radius.points,
+                content_bounds.width.points / 2,
+                content_bounds.height.points / 2,
+            )
+        )
         return DrawableRectangle(
-            self.identity, bounds, metadata, content_bounds, self.color
+            self.identity,
+            bounds,
+            metadata,
+            content_bounds,
+            self.color,
+            effective_radius,
         )
 
 

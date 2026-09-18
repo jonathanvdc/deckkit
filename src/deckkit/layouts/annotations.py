@@ -11,7 +11,6 @@ from ..layout import (
     Constraints,
     LayoutChild,
     LayoutContext,
-    LayoutOverflow,
     LayoutPlan,
     Placement,
 )
@@ -152,14 +151,6 @@ class AnnotatedLayout:
                     continue
                 placement = annotation.place(child, bounds, container)
                 plan, x, y = placement.plan, placement.x, placement.y
-                required = (x + plan.width, y + plan.height)
-                if (
-                    x < pt(0)
-                    or y < pt(0)
-                    or required[0] > main.width
-                    or required[1] > main.height
-                ):
-                    raise LayoutOverflow(None, (main.width, main.height), required)
                 annotation_placements[index] = placement
                 _collect_bounds(child, plan, x, y, bounds)
             if len(deferred) == len(pending):
@@ -180,7 +171,25 @@ class AnnotatedLayout:
         placements.extend(
             annotation_placements[index] for index in range(len(self.annotations))
         )
-        return content(main.width, main.height, tuple(placements))
+        min_x = min((placement.x for placement in placements), default=pt(0))
+        min_y = min((placement.y for placement in placements), default=pt(0))
+        max_x = max(
+            (placement.x + placement.plan.width for placement in placements),
+            default=main.width,
+        )
+        max_y = max(
+            (placement.y + placement.plan.height for placement in placements),
+            default=main.height,
+        )
+        shifted = tuple(
+            replace(
+                placement,
+                x=placement.x - min_x,
+                y=placement.y - min_y,
+            )
+            for placement in placements
+        )
+        return content(max_x - min_x, max_y - min_y, shifted)
 
 
 @dataclass(frozen=True)

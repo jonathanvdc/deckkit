@@ -2,19 +2,19 @@ from pathlib import Path
 
 import pytest
 
-from deckkit import (
-    ClarityTheme,
-    Compiler,
+from deckkit import Compiler
+from deckkit.backends import pptx, svg
+from deckkit.fonts import (
     FileFontResolver,
     Font,
     FontFile,
     FontNotFoundError,
     SystemFontResolver,
-    Text,
-    pt,
 )
-from deckkit.backends import pptx, svg
 from deckkit.measurement import PillowMeasurer
+from deckkit.themes import ClarityTheme, TextStyle
+from deckkit.units import pt
+from deckkit.views import Text
 
 
 def test_file_resolver_and_system_discovery_agree(font, tmp_path):
@@ -66,9 +66,13 @@ def test_exports_use_resolved_family_not_file_alias(font, tmp_path):
 
     request = Font("Build font")
     resolver = FileFontResolver({request: font})
-    compiled = Compiler(
-        ClarityTheme.from_font(request), font_resolver=resolver
-    ).compile_view(Text("Hello"))
+
+    class BuildTheme(ClarityTheme):
+        def text_style(self, role):
+            style = super().text_style(role)
+            return TextStyle(request, style.size, style.line_spacing)
+
+    compiled = Compiler(BuildTheme(), font_resolver=resolver).compile_view(Text("Hello"))
     layout = compiled.drawable
     face = resolver.resolve(request)
     assert layout.children[0].requested_font == request

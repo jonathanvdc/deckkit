@@ -1,16 +1,19 @@
 # deckkit
 
 Experimental declarative Python presentation framework. Author composed views, compile
-constrained layout into a scene, then export that scene to SVG or editable PowerPoint.
+constrained layout into a scene, then export that scene to SVG or PowerPoint.
 
 ```python
-from deckkit import Compiler, ClarityTheme, Deck, Font
+from deckkit import Deck
+from deckkit.fonts import Font
+from deckkit.themes import ClarityTheme
 from examples.api_sketch import MetricsSlide
-from deckkit.backends import pptx
 
-compiler = Compiler(ClarityTheme.from_font(Font("Aptos")))
-compiled = compiler.compile_deck(Deck([MetricsSlide()]))
-pptx.render(compiled, "metrics.pptx")
+deck = Deck(
+    [MetricsSlide()],
+    theme=ClarityTheme(),
+)
+deck.write_pptx("metrics.pptx")
 ```
 
 ## Run the prototype
@@ -21,7 +24,7 @@ Python 3.9+ and a TrueType/OpenType font file are required. HarfBuzz shapes text
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e '.[pptx,dev]'
-python -m examples.render --font Aptos
+python -m examples.render
 pytest
 mypy
 ```
@@ -29,9 +32,9 @@ mypy
 On macOS, `/System/Library/Fonts/Helvetica.ttc` is an example font path. Tests also
 recognize DejaVu Sans on Linux and Arial on Windows; override with `DECKKIT_FONT`.
 
-The example deck and supplementary previews demonstrate composition, two structural theme recipes,
-changing emphasis, insertion and layout-driven resizing. Outputs are in `output/`.
-PPTX uses editable native text, rectangles and images. Explicit state sequences compile
+The example deck demonstrates composition, changing emphasis, insertion and
+layout-driven resizing. It writes `output/prototype.pptx`.
+PPTX uses native text, rectangles and images. Explicit state sequences compile
 to native PowerPoint build timing; static SVG continues to represent one selected state.
 
 Start with [API examples](examples/api_sketch.py) and [design decisions](docs/design.md).
@@ -41,8 +44,8 @@ copy values; order matters. Explicit keys are slide-global and must be unique.
 Current limits: whitespace wrapping, named fonts per typography role, no font fallback,
 no automatic text shrinking, no Grid/media runtime, a deliberately small native animation
 subset, and no PowerPoint grouping yet. Geometry is shared by both backends, but font rendering
-and baseline placement still require validation in PowerPoint. Text is editable and
-prewrapped; fonts are not embedded. Image payloads are stored in the resolved scene.
+and baseline placement still require validation in PowerPoint. Text is prewrapped;
+fonts are not embedded. Image payloads are stored in the resolved scene.
 
 PyPI packaging is scaffolded, but nothing has been published. The distribution name,
 license and compatibility policy remain decisions for the project owner.
@@ -67,7 +70,9 @@ Animation uses typed values and explicit state boundaries stored on each slide. 
 default to presenter advance; timed steps use `AfterPrevious` or `WithPrevious`.
 
 ```python
-from deckkit import Deck, Slide, SlideTimeline
+from deckkit import Deck
+from deckkit.animation import SlideTimeline
+from deckkit.views import Slide
 
 
 class PipelineSlide(Slide):
@@ -78,7 +83,9 @@ class PipelineSlide(Slide):
         return pipeline_for(context.state["step"])
 
 
-compiled = compiler.compile_deck(Deck([PipelineSlide()]))
+compiled = compiler.compile_deck(
+    Deck([PipelineSlide()], theme=compiler.environment.theme)
+)
 pptx.render(compiled, "animated.pptx")
 ```
 
@@ -110,11 +117,20 @@ fallback. Rasterization is not a fallback.
 Distances require immutable `Length` values; bare floats are no longer accepted.
 
 ```python
-from deckkit import Text, Rectangle, Compiler, pt, inch, cm
+from deckkit import Deck
+from deckkit.fonts import Font
+from deckkit.themes import ClarityTheme
+from deckkit.units import cm, inch, pt
+from deckkit.views import Rectangle, Text
 
 heading = Text("Compiler performance").padding(pt(16))
 box = Rectangle().frame(width=inch(3), height=cm(2))
-compiler = Compiler(theme, width=inch(13 + 1 / 3), height=inch(7.5))
+deck = Deck(
+    [],
+    theme=ClarityTheme(),
+    width=inch(13 + 1 / 3),
+    height=inch(7.5),
+)
 ```
 
 `pt(72)`, `inch(1)` and `cm(2.54)` describe the same length. Lengths support addition,
@@ -142,13 +158,21 @@ objects with a `points` field.
 Semantic content slots accept views, including nested composites:
 
 ```python
-from deckkit import HStack, Text
-from deckkit.views.semantic import BeforeAfter, Metric, Stage
+from deckkit.views import HStack, Text
+from deckkit.views.semantic import BeforeAfter, Metric, Pill, Pipeline, PipelineStage
+
+pipeline = Pipeline(
+    PipelineStage(Text("Parse")),
+    PipelineStage(Text("Lower")),
+    PipelineStage(Text("Optimize")),
+)
+
+status = Pill(Text("READY"))
 
 comparison = BeforeAfter(
     title=Text("A simpler pipeline"),
-    before=Stage(HStack(Text("Parse"), Text("Lower"))),
-    after=Stage(Text("Parse")),
+    before=PipelineStage(HStack(Text("Parse"), Text("Lower"))),
+    after=PipelineStage(Text("Parse")),
     takeaway=Metric(Text("3"), Text("Passes removed")),
 )
 ```
@@ -157,13 +181,20 @@ All semantic components inherit `SemanticView`. Its `body(context)` asks
 `theme.render_semantic(component, context)` for a view. Returning `None` selects
 `component.default_body(context)`. Themes can override built-in or application-defined
 semantic types through this single hook. Recipes remain ordinary view composition.
-`Metric.value`, `Metric.label`, `Stage.label`, and every `BeforeAfter` content slot
-require views; wrap strings in `Text(...)`. Style tokens such as `Stage.emphasis`
-remain strings. Explicit child styles override inherited recipe styles.
+`Metric.value`, `Metric.label`, `Pill.content`, `PipelineStage.label`, and every
+`BeforeAfter` content slot require views; wrap strings in `Text(...)`. A `Pill` can
+therefore contain text or richer composed content. Style tokens such as
+`PipelineStage.emphasis` remain strings. Explicit child styles override inherited
+recipe styles.
+
+`Pipeline` lays out its stages horizontally and connects each adjacent pair. Additional
+`Label` or `Connector` values remain ordinary annotations passed through its
+`annotations` argument.
 
 View implementations live in `views/`, one file per view, with semantic components
-under `views/semantic/`. State and environment types live in `context.py`. Top-level
-imports and `deckkit.semantic` remain convenient re-exports.
+under `views/semantic/`. Import authoring types from `deckkit.views`, semantic
+components from `deckkit.views.semantic`, and theme contracts and implementations
+from `deckkit.themes`. The package root is reserved for deck compilation entry points.
 
 ## View categories
 
@@ -172,8 +203,9 @@ imports and `deckkit.semantic` remain convenient re-exports.
 `body(context) -> View`. `Slide` and `SemanticView` are composite views; semantic
 components implement `default_body` because their shared `body` handles theme recipes.
 
-`Text`, `Image` and `Rectangle` inherit `PrimitiveView`. `LayoutView` holds children
-and a layout policy; all stacks inherit that contract. Neither category has a body.
+`Text`, `Image` and `Rectangle` inherit `PrimitiveView`. `LayoutView` is the abstract
+category for views that arrange children with a layout policy; stacks and custom
+layout views inherit that contract. Neither category has a body.
 New primitive subclasses require explicit compiler/backend support. Unsupported
 view types produce a diagnostic instead of implicitly invoking a body method.
 
@@ -183,23 +215,24 @@ view types produce a diagnostic instead of implicitly invoking a body method.
 Core `Theme` has no editorial flag or built-in structural recipe. The example
 `examples.themes.EditorialTheme` subclasses it and overrides `render_semantic`.
 
-`ClarityTheme.typography` maps role names to immutable `TextStyle(font, size,
-line_spacing=1.1)` values. Each role can request a different family, regular/bold weight and italic face. `ClarityTheme.from_font(Font("Aptos"))` is a convenience that
-initializes all built-in roles with one face; it also works on theme subclasses.
-For example:
+`ClarityTheme()` is a complete theme with an Aptos-based title/body/caption/metric
+scale. Font choices are part of the theme rather than constructor configuration.
+Customize them through ordinary subclassing:
 
 ```python
-from deckkit import ClarityTheme, TextStyle, Font, pt
+from deckkit.fonts import Font
+from deckkit.themes import ClarityTheme, TextStyle
 
-roles = dict(ClarityTheme.from_font(Font("Aptos")).typography)
-roles["title"] = TextStyle(Font("Aptos Display", weight="bold"), pt(36))
-roles["metric"] = TextStyle(Font("Aptos"), pt(48), line_spacing=1.2)
-theme = ClarityTheme(roles)
+class BrandTheme(ClarityTheme):
+    def text_style(self, role):
+        style = super().text_style(role)
+        return TextStyle(Font("Inter"), style.size, style.line_spacing)
+
+theme = BrandTheme()
 ```
 
 `.font("title")` selects the complete typography role; descendant overrides still
-win. Missing roles produce an actionable error. The example runner accepts
-`--title-font` and `--metric-font` alongside its required `--font`.
+win. Missing roles produce an actionable error.
 
 
 ## Font resolution
@@ -214,11 +247,13 @@ font registries are not yet supported. Missing fonts produce `FontNotFoundError`
 Explicit files are a resolver configuration, not a second typography representation:
 
 ```python
-from deckkit import Compiler, ClarityTheme, Font, FileFontResolver, FontFile
+from deckkit import Compiler
+from deckkit.fonts import FileFontResolver, Font, FontFile
+from deckkit.themes import ClarityTheme
 
 body = Font("Aptos")
 resolver = FileFontResolver({body: FontFile("/fonts/Aptos.ttf", index=0)})
-compiler = Compiler(ClarityTheme.from_font(body), font_resolver=resolver)
+compiler = Compiler(ClarityTheme(), font_resolver=resolver)
 ```
 
 A string file path is also accepted as a mapping value. `FontFile` adds an explicit
@@ -226,7 +261,6 @@ face index for collections. Mapping keys can be aliases; exports use the loaded
 face's actual family/style so they match measurement. Both the request and resolved
 face survive in the scene. HarfBuzz and FreeType use the same file and collection
 index. Font files are not embedded in SVG or PPTX; viewing machines need the fonts.
-The example CLI's `--font`, `--title-font` and `--metric-font` now take family names.
 
 
 ## Theme contract and Clarity
@@ -237,10 +271,9 @@ and `text_style(role)`. It owns no palette, typography mapping or scale. Its opt
 composition; this is fallback behavior, not a design recipe.
 
 The bundled `ClarityTheme` (`deckkit.themes.clarity`) supplies the original blue/teal
-palette and title/body/caption/metric scale. Use `ClarityTheme.from_font(Font("Aptos"))`
-or pass a typography mapping to `ClarityTheme(...)`. The editorial example inherits
-from Clarity. Applications can instead implement `Theme` directly without adopting
-Clarity's tokens or storage model.
+palette and an Aptos-based title/body/caption/metric scale. The editorial example
+inherits from Clarity. Applications can subclass it to change the design or implement
+`Theme` directly without adopting Clarity's tokens or storage model.
 
 
 ## Decks
@@ -251,7 +284,10 @@ It supports iteration, indexing and slicing (which returns another deck).
 ```python
 from deckkit import Deck
 
-deck = Deck([MetricsSlide(), ComparisonSlide()])
+deck = Deck(
+    [MetricsSlide(), ComparisonSlide()],
+    theme=compiler.environment.theme,
+)
 compiled = compiler.compile_deck(deck)
 pptx.render(compiled, "presentation.pptx")
 ```
@@ -266,9 +302,8 @@ There is only one deck compilation and PPTX export path. To materialize builds a
 static slides for a backend without animation support, call `compiled.expanding_steps()`
 before export. SVG renders a selected endpoint such as `slide.initial.drawable` directly.
 
-The example runner now exports a four-slide deck to `prototype.pptx`. Additional
-SVG previews demonstrate theme changes and state transitions separately from the
-main deck. It does not remove older files from an existing output directory.
+The example runner exports a four-slide deck to `output/prototype.pptx`. It does
+not remove older files from an existing output directory.
 
 
 ## Compiled results

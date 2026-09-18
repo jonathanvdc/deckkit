@@ -11,7 +11,7 @@ Status: experimental. Examples establish the vocabulary; compatibility is not pr
 `layouts.py`: stack, overlay, frame, padding and intrinsic leaf policies using `Length` values normalized to points (72 per inch).
 `drawables/`: concrete bounds, measured text lines and retained component ancestry.
 `reconcile.py`: reconcile logical nodes before layout; enrich changes with scene geometry afterward.
-`backends/`: consume the same scene; SVG first, optional editable static PPTX.
+`backends/`: consume the same scene; SVG first, optional static PPTX.
 `views/semantic/`, `theme.py`: ordinary composition and structural recipes, with no backend imports.
 
 ## Decisions to test
@@ -61,7 +61,7 @@ Grid, Fraction, MinMax, baseline alignment and responsive recipes can wait.
 Image assets are captured during compilation with intrinsic dimensions; contain and cover
 are renderer-independent fit choices. The scene is self-contained. Explicit state
 sequences compile to a backend-neutral animation program. PPTX lowers its initial native
-subset to editable union-scene shapes and a PresentationML timing tree; static SVG
+subset to union-scene shapes and a PresentationML timing tree; static SVG
 continues to export selected states. Unsupported effects fail by default and have explicit
 crossfade or discrete fallback policies. Rasterization is not a fallback.
 
@@ -93,10 +93,9 @@ No credentials or publication are required for this prototype.
 
 `Layout.measure(constraints, children)` returns a `LayoutPlan` with its size and
 `Placement(child, measured_plan, x, y)` records. Children expose identity, flex weight
-and cached measurement, without exposing view types. `LayoutView(policy, *children)`
-uses a user-defined policy; both exporters treat it as an ordinary grouping node.
-For example, `LayoutView(StackLayout("vertical", spacing=pt(24)), title, content)` uses
-the same policy as `VStack`. Policies are immutable descriptions by convention.
+and cached measurement, without exposing view types. A `LayoutView` subclass returns
+its policy from `resolve_layout`; both exporters treat it as an ordinary grouping node.
+Policies are immutable descriptions by convention.
 
 Resolution attaches policies to nodes and composes modifier wrappers in source order.
 Text policies receive the compiler's measurement service. The engine has no node-kind
@@ -144,7 +143,8 @@ compiler-local identities, not a version-stable serialized interchange format.
 
 Only `CompositeView` declares the abstract `body(context)` contract. `View` owns
 modifiers and identity, `PrimitiveView` marks directly supported leaves, and
-`LayoutView` owns children and a layout policy. Stacks inherit `LayoutView` and
+`LayoutView` is the abstract category for policy-laid-out children. Custom layout
+views and stacks inherit `LayoutView`; stacks
 construct their policy through an abstract `_make_layout` method. The resolver
 expands only composites and validates that their bodies return views. Existing
 custom `class X(View)` compositions must migrate to `class X(CompositeView)`.
@@ -155,23 +155,24 @@ custom `class X(View)` compositions must migrate to `class X(CompositeView)`.
 Core `Theme` has no editorial flag or built-in structural recipe. The example
 `examples.themes.EditorialTheme` subclasses it and overrides `render_semantic`.
 
-`ClarityTheme.typography` maps role names to immutable `TextStyle(font, size,
-line_spacing=1.1)` values. Each role can request a different family, regular/bold weight and italic face. `ClarityTheme.from_font(Font("Aptos"))` is a convenience that
-initializes all built-in roles with one face; it also works on theme subclasses.
-For example:
+`ClarityTheme()` is a complete theme with an Aptos-based title/body/caption/metric
+scale. Font choices are part of the theme rather than constructor configuration.
+Customize them through ordinary subclassing:
 
 ```python
-from deckkit import ClarityTheme, TextStyle, Font, pt
+from deckkit.fonts import Font
+from deckkit.themes import ClarityTheme, TextStyle
 
-roles = dict(ClarityTheme.from_font(Font("Aptos")).typography)
-roles["title"] = TextStyle(Font("Aptos Display", weight="bold"), pt(36))
-roles["metric"] = TextStyle(Font("Aptos"), pt(48), line_spacing=1.2)
-theme = ClarityTheme(roles)
+class BrandTheme(ClarityTheme):
+    def text_style(self, role):
+        style = super().text_style(role)
+        return TextStyle(Font("Inter"), style.size, style.line_spacing)
+
+theme = BrandTheme()
 ```
 
 `.font("title")` selects the complete typography role; descendant overrides still
-win. Missing roles produce an actionable error. The example runner accepts
-`--title-font` and `--metric-font` alongside its required `--font`.
+win. Missing roles produce an actionable error.
 
 
 ## Font resolution
@@ -186,11 +187,13 @@ font registries are not yet supported. Missing fonts produce `FontNotFoundError`
 Explicit files are a resolver configuration, not a second typography representation:
 
 ```python
-from deckkit import Compiler, ClarityTheme, Font, FileFontResolver, FontFile
+from deckkit import Compiler
+from deckkit.fonts import FileFontResolver, Font, FontFile
+from deckkit.themes import ClarityTheme
 
 body = Font("Aptos")
 resolver = FileFontResolver({body: FontFile("/fonts/Aptos.ttf", index=0)})
-compiler = Compiler(ClarityTheme.from_font(body), font_resolver=resolver)
+compiler = Compiler(ClarityTheme(), font_resolver=resolver)
 ```
 
 A string file path is also accepted as a mapping value. `FontFile` adds an explicit
@@ -198,7 +201,6 @@ face index for collections. Mapping keys can be aliases; exports use the loaded
 face's actual family/style so they match measurement. Both the request and resolved
 face survive in the scene. HarfBuzz and FreeType use the same file and collection
 index. Font files are not embedded in SVG or PPTX; viewing machines need the fonts.
-The example CLI's `--font`, `--title-font` and `--metric-font` now take family names.
 
 
 ## Theme contract and Clarity
@@ -209,10 +211,9 @@ and `text_style(role)`. It owns no palette, typography mapping or scale. Its opt
 composition; this is fallback behavior, not a design recipe.
 
 The bundled `ClarityTheme` (`deckkit.themes.clarity`) supplies the original blue/teal
-palette and title/body/caption/metric scale. Use `ClarityTheme.from_font(Font("Aptos"))`
-or pass a typography mapping to `ClarityTheme(...)`. The editorial example inherits
-from Clarity. Applications can instead implement `Theme` directly without adopting
-Clarity's tokens or storage model.
+palette and an Aptos-based title/body/caption/metric scale. The editorial example
+inherits from Clarity. Applications can subclass it to change the design or implement
+`Theme` directly without adopting Clarity's tokens or storage model.
 
 
 The view-expansion stage is named explicitly: `view_expansion.expand_view()`

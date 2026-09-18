@@ -3,21 +3,16 @@ from xml.etree import ElementTree as ET
 
 import pytest
 
-from deckkit import (
-    Compiler,
-    FileFontResolver,
-    Font,
-    HStack,
-    Image,
-    Rectangle,
-    Text,
-    cm,
-    inch,
-    pt,
-)
+from deckkit import Compiler
 from deckkit.backends import pptx, svg
 from deckkit.drawables import Bounds
+from deckkit.fonts import (
+    FileFontResolver,
+    Font,
+)
 from deckkit.layout import Constraints, LayoutPlan
+from deckkit.units import cm, inch, pt
+from deckkit.views import HStack, Image, Rectangle, Text
 
 
 def test_conversion_and_dimensional_arithmetic():
@@ -62,13 +57,13 @@ def test_nonfinite_lengths(value):
 def test_mixed_units_and_physical_exports(font, tmp_path):
     from pptx import Presentation
 
-    from deckkit import ClarityTheme
+    from deckkit.themes import ClarityTheme
 
     compiler = Compiler(
-        ClarityTheme.from_font(Font("Test Font")),
+        ClarityTheme(),
         width=inch(10),
         height=cm(12.7),
-        font_resolver=FileFontResolver({Font("Test Font"): font}),
+        font_resolver=FileFontResolver({Font("Aptos"): font}),
     )
     compiled = compiler.compile_view(
         Rectangle().frame(width=cm(2.54), height=inch(1)).padding(pt(12))

@@ -2,7 +2,6 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 
-from deckkit import HStack, Rectangle, Text, pt
 from deckkit.backends import svg
 from deckkit.drawables import (
     Bounds,
@@ -11,6 +10,8 @@ from deckkit.drawables import (
     DrawableRectangle,
     DrawableText,
 )
+from deckkit.units import pt
+from deckkit.views import HStack, Rectangle, Text
 
 
 def test_typed_content_and_allocated_bounds(compiler):

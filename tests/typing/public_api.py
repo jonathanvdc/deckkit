@@ -1,41 +1,41 @@
 """Static API contract checks, run by mypy rather than pytest."""
 
+from __future__ import annotations
+
 from collections.abc import Sequence
+from dataclasses import dataclass
+from typing import Callable
 
 from typing_extensions import assert_type
 
-from deckkit import (
-    Anchor,
-    Animation,
-    Annotated,
-    CompiledSlide,
-    CompiledView,
-    Compiler,
-    CompositeView,
-    Connector,
-    Context,
-    EnvironmentKey,
+from deckkit import CompiledDeck, CompiledSlide, CompiledView, Compiler, Deck
+from deckkit.animation import Animation, SlideTimeline
+from deckkit.annotations import Anchor, Annotated, Connector
+from deckkit.drawables import Drawable
+from deckkit.geometry import RelativePoint
+from deckkit.identity import ViewIdentity
+from deckkit.layout import (
+    Constraints,
     Layout,
     LayoutChild,
     LayoutContext,
     LayoutPlan,
-    LayoutView,
-    Length,
     Placement,
-    Rectangle,
-    RelativePoint,
-    Slide,
-    SlideTimeline,
-    Text,
-    Theme,
-    View,
-    cm,
-    inch,
-    pt,
 )
-from deckkit.drawables import Drawable
-from deckkit.layout import Constraints
-from deckkit.views.semantic import Metric
+from deckkit.themes import Theme
+from deckkit.units import Length, cm, inch, pt
+from deckkit.views import (
+    CompositeView,
+    Context,
+    EnvironmentKey,
+    HStack,
+    LayoutView,
+    Rectangle,
+    Slide,
+    Text,
+    View,
+)
+from deckkit.views.semantic import Metric, Pill, Pipeline, PipelineStage
 
 
 class CustomLayout:
@@ -48,6 +48,18 @@ class CustomLayout:
         child = children[0]
         plan = child.measure(constraints)
         return LayoutPlan(plan.width, plan.height, (Placement(child, plan),))
+
+
+@dataclass(frozen=True, init=False)
+class CustomLayoutView(LayoutView):
+    policy: Layout
+
+    def __init__(self, policy: Layout, *children: View | None) -> None:
+        object.__setattr__(self, "policy", policy)
+        super().__init__(*children)
+
+    def resolve_layout(self, lookup: Callable[[str], ViewIdentity]) -> Layout:
+        return self.policy
 
 
 class CustomEnvironmentKey(EnvironmentKey[int]):
@@ -80,6 +92,15 @@ def check_api(compiler: Compiler) -> None:
         Metric(Text("2.7×"), Text("Throughput")).animation(Animation.smooth()),
         Metric,
     )
+    assert_type(Pill(HStack(Text("New"), Text("label"))), Pill)
+    assert_type(
+        Pipeline(PipelineStage(Text("Parse")), PipelineStage(Text("Optimize"))),
+        Pipeline,
+    )
+    assert_type(
+        Pipeline(PipelineStage(Text("Parse"))).padding(pt(4)),
+        Pipeline,
+    )
     assert_type(CustomView().padding(), CustomView)
     assert_type(
         Annotated(
@@ -92,13 +113,17 @@ def check_api(compiler: Compiler) -> None:
         Annotated,
     )
     policy: Layout = CustomLayout()
-    result = compiler.compile_view(LayoutView(policy, text, None))
+    result = compiler.compile_view(CustomLayoutView(policy, text, None))
     assert_type(result, CompiledView)
     assert_type(result.drawable, Drawable)
     assert_type(
         compiler.compile_slide(CustomSlide()),
         CompiledSlide,
     )
+    deck = Deck([CustomSlide()], theme=compiler.environment.theme)
+    assert_type(deck.compile(), CompiledDeck)
+    deck.write_pptx("typed.pptx")
+    Deck([CustomSlide()])  # type: ignore[call-arg]
 
 
 def check_lengths() -> None:

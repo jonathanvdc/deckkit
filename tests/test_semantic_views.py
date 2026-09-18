@@ -4,22 +4,25 @@ from dataclasses import dataclass
 
 import pytest
 
-from deckkit import (
-    ClarityTheme,
-    Compiler,
-    Context,
-    ExpandedText,
+from deckkit import Compiler
+from deckkit.backends import pptx, svg
+from deckkit.drawables import DrawableConnector, DrawableRectangle, DrawableText
+from deckkit.expanded_views import ExpandedText
+from deckkit.fonts import (
     FileFontResolver,
     Font,
-    HStack,
-    Rectangle,
-    Text,
-    View,
-    VStack,
-    pt,
 )
-from deckkit.backends import pptx, svg
-from deckkit.views.semantic import BeforeAfter, Metric, SemanticView, Stage
+from deckkit.themes import ClarityTheme
+from deckkit.units import pt
+from deckkit.views import Context, HStack, Rectangle, Text, View, VStack
+from deckkit.views.semantic import (
+    BeforeAfter,
+    Metric,
+    Pill,
+    Pipeline,
+    PipelineStage,
+    SemanticView,
+)
 from examples.themes import EditorialTheme
 
 
@@ -41,7 +44,7 @@ class RecipeTheme(ClarityTheme):
     def render_semantic(self, component: SemanticView, context: Context) -> View | None:
         if isinstance(component, Metric):
             return HStack(component.label, component.value)
-        if isinstance(component, Stage):
+        if isinstance(component, PipelineStage):
             return VStack(Text("ClarityTheme stage"), component.label)
         if isinstance(component, CustomSemantic):
             return VStack(Text("ClarityTheme custom"), component.content)
@@ -53,7 +56,7 @@ def test_rich_content_in_every_semantic_slot(font, tmp_path):
 
     component = BeforeAfter(
         title=HStack(Text("A"), Text("comparison")),
-        before=Stage(HStack(Text("Old"), Text("pipeline"))),
+        before=PipelineStage(HStack(Text("Old"), Text("pipeline"))),
         after=Metric(
             VStack(Text("2.7×"), Rectangle().frame(width=pt(20), height=pt(5))),
             HStack(Text("New"), Text("pipeline")),
@@ -62,8 +65,8 @@ def test_rich_content_in_every_semantic_slot(font, tmp_path):
     )
     for theme_type in (ClarityTheme, EditorialTheme):
         result = Compiler(
-            theme_type.from_font(Font("Test Font")),
-            font_resolver=FileFontResolver({Font("Test Font"): font}),
+            theme_type(),
+            font_resolver=FileFontResolver({Font("Aptos"): font}),
         ).compile_view(component)
         assert set(texts(result)) >= {
             "A",
@@ -86,19 +89,61 @@ def test_rich_content_in_every_semantic_slot(font, tmp_path):
         )
 
 
+def test_pill_accepts_any_view_and_before_after_uses_pills(compiler):
+    pill = compiler.compile_view(Pill(HStack(Text("New"), Text("label"))))
+    assert texts(pill) == ["New", "label"]
+    background = next(
+        node for node in pill.drawable.walk() if isinstance(node, DrawableRectangle)
+    )
+    assert background.color == "#E8EEF5"
+    assert background.corner_radius == pt(18)
+
+    comparison = compiler.compile_view(
+        BeforeAfter(Text("Change"), Text("Old"), Text("New"), Text("Result"))
+    )
+    assert sum(
+        1
+        for node in comparison.expanded_tree.walk()
+        if getattr(node, "component_type", "").endswith(".Pill")
+    ) == 2
+    labels = [
+        node
+        for node in comparison.drawable.walk()
+        if isinstance(node, DrawableText) and node.text in ("BEFORE", "AFTER")
+    ]
+    backgrounds = [
+        node
+        for node in comparison.drawable.walk()
+        if isinstance(node, DrawableRectangle) and node.bounds.width == pt(88)
+    ]
+    assert len(labels) == len(backgrounds) == 2
+    assert all(background.bounds.height == pt(36) for background in backgrounds)
+    for label, background in zip(labels, backgrounds):
+        assert (
+            label.content_bounds.x + label.content_bounds.width / 2
+        ).points == pytest.approx(
+            (background.bounds.x + background.bounds.width / 2).points
+        )
+        assert (
+            label.content_bounds.y + label.content_bounds.height / 2
+        ).points == pytest.approx(
+            (background.bounds.y + background.bounds.height / 2).points
+        )
+
+
 def test_theme_hook_applies_to_all_semantic_types(font):
     source = VStack(
         Metric(Text("Value"), Text("Label")),
-        Stage(Text("Parse")),
+        PipelineStage(Text("Parse")),
         CustomSemantic(Text("Content")),
     )
     normal = Compiler(
-        ClarityTheme.from_font(Font("Test Font")),
-        font_resolver=FileFontResolver({Font("Test Font"): font}),
+        ClarityTheme(),
+        font_resolver=FileFontResolver({Font("Aptos"): font}),
     ).compile_view(source)
     themed = Compiler(
-        RecipeTheme.from_font(Font("Test Font")),
-        font_resolver=FileFontResolver({Font("Test Font"): font}),
+        RecipeTheme(),
+        font_resolver=FileFontResolver({Font("Aptos"): font}),
     ).compile_view(source)
     assert texts(normal) == ["Value", "Label", "Parse", "Default", "Content"]
     assert texts(themed) == [
@@ -111,17 +156,42 @@ def test_theme_hook_applies_to_all_semantic_types(font):
     ]
 
 
+def test_pipeline_connects_adjacent_stages(compiler):
+    result = compiler.compile_view(
+        Pipeline(
+            PipelineStage(Text("Parse")),
+            PipelineStage(Text("Lower")),
+            PipelineStage(Text("Optimize")),
+        )
+    )
+
+    connectors = [
+        node for node in result.drawable.walk() if isinstance(node, DrawableConnector)
+    ]
+    assert len(connectors) == 2
+    assert all(connector.start.x < connector.end.x for connector in connectors)
+
+
+def test_pipeline_requires_stages_and_typed_annotations():
+    with pytest.raises(ValueError, match="at least one"):
+        Pipeline()
+    with pytest.raises(TypeError, match="PipelineStage"):
+        Pipeline(Text("Not a stage"))
+    with pytest.raises(TypeError, match="annotations"):
+        Pipeline(PipelineStage(Text("Parse")), annotations=("not an annotation",))
+
+
 def test_keyed_children_survive_recipe_changes(font):
     content = Text("Same content").key("content")
     source = CustomSemantic(content).key("semantic")
     compiler = Compiler(
-        ClarityTheme.from_font(Font("Test Font")),
-        font_resolver=FileFontResolver({Font("Test Font"): font}),
+        ClarityTheme(),
+        font_resolver=FileFontResolver({Font("Aptos"): font}),
     )
     before = compiler.compile_view(source)
     after = Compiler(
-        RecipeTheme.from_font(Font("Test Font")),
-        font_resolver=FileFontResolver({Font("Test Font"): font}),
+        RecipeTheme(),
+        font_resolver=FileFontResolver({Font("Aptos"): font}),
     ).compile_view(source)
     changes = compiler.changes(before, after)
     assert not any(
@@ -136,7 +206,8 @@ def test_keyed_children_survive_recipe_changes(font):
         lambda: BeforeAfter(Text("Title"), "old", Text("new"), Text("Takeaway")),
         lambda: Metric("value", Text("label")),
         lambda: Metric(Text("value"), "label"),
-        lambda: Stage("label"),
+        lambda: PipelineStage("label"),
+        lambda: Pill("label"),
     ],
 )
 def test_semantic_content_requires_views(factory):

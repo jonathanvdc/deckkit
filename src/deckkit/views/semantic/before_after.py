@@ -1,3 +1,5 @@
+"""A semantic view for presenting a before-and-after comparison."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -8,11 +10,26 @@ from ..hstack import HStack
 from ..text import Text
 from ..view import View
 from ..vstack import VStack
+from .pill import Pill
 from .semantic_view import SemanticView
 
 
 @dataclass(frozen=True)
 class BeforeAfter(SemanticView):
+    """Present two states side by side with a title and concluding takeaway.
+
+    All four content slots accept arbitrary :class:`~deckkit.views.View` values,
+    so callers can use text, stacks, shapes, or other semantic components. The
+    default recipe labels the states ``BEFORE`` and ``AFTER`` and highlights the
+    latter with the theme's accent style.
+
+    Args:
+        title: Heading displayed above the comparison.
+        before: Content describing the initial state.
+        after: Content describing the resulting state.
+        takeaway: Conclusion displayed below the comparison.
+    """
+
     title: View
     before: View
     after: View
@@ -26,9 +43,21 @@ class BeforeAfter(SemanticView):
                 )
 
     def default_body(self, context: Context) -> View:
-        before = VStack(Text("BEFORE").font("caption"), self.before).flex()
+        """Arrange the comparison using the default horizontal recipe."""
+        label_width, label_height = pt(88), pt(36)
+        before = VStack(
+            Pill(Text("BEFORE").font("caption")).frame(
+                width=label_width, height=label_height
+            ),
+            self.before,
+        ).flex()
         after = VStack(
-            Text("AFTER").font("caption"), self.after.foreground_style("accent")
+            Pill(
+                Text("AFTER").font("caption"),
+                background_style="accent",
+                content_style="white",
+            ).frame(width=label_width, height=label_height),
+            self.after.foreground_style("accent"),
         ).flex()
         return VStack(
             self.title.font("title"),

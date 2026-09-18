@@ -1,19 +1,18 @@
 from pathlib import Path
+from types import MappingProxyType
 from xml.etree import ElementTree as ET
 
 import pytest
 
-from deckkit import (
-    ClarityTheme,
-    Compiler,
+from deckkit import Compiler
+from deckkit.backends import pptx, svg
+from deckkit.fonts import (
     FileFontResolver,
     Font,
-    Text,
-    TextStyle,
-    VStack,
-    pt,
 )
-from deckkit.backends import pptx, svg
+from deckkit.themes import ClarityTheme, TextStyle
+from deckkit.units import pt
+from deckkit.views import Text, VStack
 from examples.themes import EditorialTheme
 
 
@@ -25,9 +24,12 @@ def test_role_fonts_reach_measurement_and_exports(font, tmp_path):
     # Distinct paths make accidental reuse visible on every supported platform.
     title_font = tmp_path / "title.ttf"
     title_font.write_bytes(Path(font).read_bytes())
-    roles = dict(ClarityTheme.from_font(Font("Test Font")).typography)
+    roles = dict(ClarityTheme().typography)
     roles["title"] = TextStyle(Font("Title Font"), pt(36), 1.4)
-    theme = ClarityTheme(roles)
+    class MixedFontTheme(ClarityTheme):
+        typography = MappingProxyType(dict(roles))
+
+    theme = MixedFontTheme()
     roles["title"] = TextStyle(Font("Test Font"), pt(12))
     assert theme.text_style("title").size == pt(36)
 
@@ -44,7 +46,7 @@ def test_role_fonts_reach_measurement_and_exports(font, tmp_path):
         theme,
         measurer=measurer,
         font_resolver=FileFontResolver(
-            {Font("Test Font"): font, Font("Title Font"): str(title_font)}
+            {Font("Aptos"): font, Font("Title Font"): str(title_font)}
         ),
     ).compile_view(VStack(Text("Title"), Text("Body").font("body")).font("title"))
     layout = compiled.drawable
@@ -67,15 +69,15 @@ def test_role_fonts_reach_measurement_and_exports(font, tmp_path):
 def test_missing_role_is_actionable(font):
     with pytest.raises(ValueError, match="Unknown typography role.*missing"):
         Compiler(
-            ClarityTheme.from_font(Font("Test Font")),
-            font_resolver=FileFontResolver({Font("Test Font"): font}),
+            ClarityTheme(),
+            font_resolver=FileFontResolver({Font("Aptos"): font}),
         ).compile_view(Text("Hello").font("missing"))
 
 
 def test_editorial_is_an_example_subclass(font):
-    theme = ClarityTheme.from_font(Font("Test Font"))
+    theme = ClarityTheme()
     assert not hasattr(theme, "editorial")
-    assert isinstance(EditorialTheme.from_font(Font("Test Font")), EditorialTheme)
+    assert isinstance(EditorialTheme(), EditorialTheme)
     with pytest.raises(TypeError):
         theme.typography["title"] = TextStyle(Font("Test Font"), pt(100))
 

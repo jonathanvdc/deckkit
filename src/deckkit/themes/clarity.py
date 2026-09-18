@@ -1,39 +1,28 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
 from types import MappingProxyType
-
-from typing_extensions import Self
+from typing import ClassVar
 
 from ..fonts import Font
 from ..theme import TextStyle, Theme
 from ..units import pt
 
 
-@dataclass(frozen=True)
 class ClarityTheme(Theme):
     """A restrained blue/teal design system with a four-role type scale."""
 
-    typography: Mapping[str, TextStyle]
-
-    def __post_init__(self) -> None:
-        object.__setattr__(self, "typography", MappingProxyType(dict(self.typography)))
-
-    @classmethod
-    def from_font(cls, font: Font) -> Self:
-        """Convenience for a theme whose built-in roles all use one font face."""
-        return cls(
-            {
-                role: TextStyle(font, pt(size))
-                for role, size in {
-                    "title": 32,
-                    "body": 20,
-                    "caption": 16,
-                    "metric": 46,
-                }.items()
-            }
-        )
+    typography: ClassVar[Mapping[str, TextStyle]] = MappingProxyType(
+        {
+            role: TextStyle(Font("Aptos"), pt(size))
+            for role, size in {
+                "title": 32,
+                "body": 20,
+                "caption": 16,
+                "metric": 46,
+            }.items()
+        }
+    )
 
     def text_style(self, role: str) -> TextStyle:
         try:

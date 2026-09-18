@@ -3,22 +3,16 @@ from zipfile import ZipFile
 
 import pytest
 
-from deckkit import (
+from deckkit import CompiledDeck
+from deckkit.animation import (
     AfterPrevious,
     Animation,
-    CompiledDeck,
     EffectKind,
     FallbackPolicy,
     OnAdvance,
-    Rectangle,
-    Slide,
     SlideTimeline,
-    State,
-    Text,
     TimelineStep,
     Transition,
-    VStack,
-    pt,
 )
 from deckkit.backends.pptx_animation import (
     PptxBehaviorKind,
@@ -26,6 +20,8 @@ from deckkit.backends.pptx_animation import (
     PptxTrigger,
     plan_slide,
 )
+from deckkit.units import pt
+from deckkit.views import Rectangle, Slide, State, Text, VStack
 
 
 @dataclass(frozen=True)
@@ -157,7 +153,7 @@ def test_pptx_sequence_contains_union_shapes_and_native_timing(compiler, tmp_pat
     assert "<p:bldLst><p:bldP" in slide
 
 
-def test_pptx_crossfade_resize_materializes_the_new_shape(compiler, tmp_path):
+def test_pptx_discrete_resize_replaces_shape(compiler, tmp_path):
     from deckkit.backends import pptx
 
     @dataclass(frozen=True)
@@ -170,7 +166,7 @@ def test_pptx_crossfade_resize_materializes_the_new_shape(compiler, tmp_path):
                 Rectangle()
                 .key("box")
                 .frame(width=pt(context.state["width"]), height=pt(40))
-                .animation(Animation.smooth(fallback=FallbackPolicy.CROSSFADE))
+                .animation(Animation.smooth(fallback=FallbackPolicy.DISCRETE))
             )
 
     compiled = compiler.compile_slide(ResizingSlide())
@@ -181,7 +177,36 @@ def test_pptx_crossfade_resize_materializes_the_new_shape(compiler, tmp_path):
         slide = archive.read("ppt/slides/slide1.xml").decode()
     assert "key:box:" in slide
     assert "#build-1" in slide
-    assert slide.count('filter="fade"') == 2
+    assert "<p:animScale>" not in slide
+    assert slide.count('presetID="1"') == 2
+    assert 'filter="fade"' not in slide
+
+
+def test_results_slide_resizes_chart_discretely(compiler):
+    from deckkit.drawables import DrawableRectangle, DrawableText
+    from examples.api_sketch import ResultsSlide
+
+    compiled = compiler.compile_slide(ResultsSlide())
+    planned = plan_slide(compiled)
+    pairs = tuple(
+        zip(compiled.animation.builds[0].effects, planned.builds[0].behaviors)
+    )
+
+    chart_rectangle = next(
+        behavior
+        for effect, behavior in pairs
+        if effect.before is not None
+        and isinstance(effect.before.drawable, DrawableRectangle)
+    )
+    chart_label = next(
+        behavior
+        for effect, behavior in pairs
+        if effect.before is not None
+        and isinstance(effect.before.drawable, DrawableText)
+    )
+    assert chart_rectangle.kind is PptxBehaviorKind.DISCRETE
+    assert chart_label.kind is PptxBehaviorKind.DISCRETE
+    assert not planned.diagnostics
 
 
 def test_animation_boundary_stops_ancestor_animation(compiler):

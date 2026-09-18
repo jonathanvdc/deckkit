@@ -2,7 +2,16 @@
 
 from .before_after import BeforeAfter
 from .metric import Metric
+from .pill import Pill
+from .pipeline import Pipeline
+from .pipeline_stage import PipelineStage
 from .semantic_view import SemanticView
-from .stage import Stage
 
-__all__ = ["BeforeAfter", "Metric", "SemanticView", "Stage"]
+__all__ = [
+    "BeforeAfter",
+    "Metric",
+    "Pill",
+    "Pipeline",
+    "PipelineStage",
+    "SemanticView",
+]

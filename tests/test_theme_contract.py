@@ -2,16 +2,14 @@ from __future__ import annotations
 
 import pytest
 
-from deckkit import (
-    Compiler,
-    EnvironmentKey,
+from deckkit import Compiler
+from deckkit.fonts import (
     FileFontResolver,
     Font,
-    Text,
-    TextStyle,
-    Theme,
-    pt,
 )
+from deckkit.themes import TextStyle, Theme
+from deckkit.units import pt
+from deckkit.views import EnvironmentKey, Text
 
 
 def test_theme_requires_color_and_typography():

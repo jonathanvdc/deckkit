@@ -3,12 +3,18 @@ from xml.etree import ElementTree as ET
 
 import pytest
 
-from deckkit import *
-from deckkit import FileFontResolver, Font, pt
+from deckkit import CompiledDeck, Compiler
+from deckkit.animation import Animation, FallbackPolicy, Transition
 from deckkit.backends import pptx, svg
 from deckkit.drawables import DrawableText
+from deckkit.expanded_views import ExpandedLayout, ExpandedView
+from deckkit.fonts import FileFontResolver, Font
+from deckkit.layout import LayoutOverflow
 from deckkit.layouts import OverlayLayout, StackLayout
 from deckkit.measurement import PillowMeasurer
+from deckkit.themes import ClarityTheme
+from deckkit.units import pt
+from deckkit.views import HStack, Image, Rectangle, State, Text, VStack
 from examples.api_sketch import (
     ComparisonSlide,
     MetricsSlide,
@@ -18,6 +24,21 @@ from examples.api_sketch import (
 from examples.themes import EditorialTheme
 
 
+def test_package_root_only_exposes_compilation_entry_points():
+    import deckkit
+
+    assert deckkit.__all__ == [
+        "CompiledDeck",
+        "CompiledSlide",
+        "CompiledView",
+        "Compiler",
+        "Deck",
+    ]
+    assert not hasattr(deckkit, "ExpandedComponent")
+    assert not hasattr(deckkit, "Text")
+    assert not hasattr(deckkit, "ClarityTheme")
+
+
 def keyed(root, key):
     return next(n for n in root.walk() if f"key:{key}:" in n.identity)
 
@@ -25,12 +46,12 @@ def keyed(root, key):
 def test_theme_changes_structure(font):
     source = ComparisonSlide()
     a = Compiler(
-        ClarityTheme.from_font(Font("Test Font")),
-        font_resolver=FileFontResolver({Font("Test Font"): font}),
+        ClarityTheme(),
+        font_resolver=FileFontResolver({Font("Aptos"): font}),
     ).compile_view(source)
     b = Compiler(
-        EditorialTheme.from_font(Font("Test Font")),
-        font_resolver=FileFontResolver({Font("Test Font"): font}),
+        EditorialTheme(),
+        font_resolver=FileFontResolver({Font("Aptos"): font}),
     ).compile_view(source)
     assert any(
         isinstance(n, ExpandedLayout)
@@ -129,7 +150,7 @@ def test_geometry_and_boundary(compiler):
         if c.identity == chart.identity and c.kind == "bounds"
     )
     assert change.before.width > change.after.width
-    assert change.animation == Animation.smooth(fallback=FallbackPolicy.CROSSFADE)
+    assert change.animation == Animation.smooth(fallback=FallbackPolicy.DISCRETE)
 
 
 def test_reparent_and_duplicate_key(compiler):

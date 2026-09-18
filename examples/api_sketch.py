@@ -2,8 +2,12 @@
 
 from dataclasses import dataclass
 
-from deckkit import *
-from deckkit.views.semantic import BeforeAfter, Metric, Stage
+from deckkit.animation import Animation, FallbackPolicy, SlideTimeline, Transition
+from deckkit.annotations import Anchor, Connector, Label
+from deckkit.geometry import RelativePoint
+from deckkit.units import pt
+from deckkit.views import CompositeView, HStack, Rectangle, Slide, Text, VStack, ZStack
+from deckkit.views.semantic import BeforeAfter, Metric, Pipeline, PipelineStage
 
 
 class MetricsSlide(Slide):
@@ -38,32 +42,27 @@ class PipelineSlide(Slide):
         step = context.state.get("step", 0)
         return VStack(
             Text("A simpler lowering pipeline").font("title"),
-            Annotated(
-                HStack(
-                    Stage(Text("Parse"), "primary" if step == 0 else "muted").key(
-                        "parse"
+            Pipeline(
+                PipelineStage(
+                    Text("Parse"), "primary" if step == 0 else "muted"
+                ).key("parse"),
+                PipelineStage(
+                    Text("Optimize"), "primary" if step == 1 else "muted"
+                ).key("opt"),
+                annotations=(
+                    Connector(
+                        Anchor("opt", RelativePoint.bottom),
+                        Anchor("result-label", RelativePoint.top),
+                        end_cap="none",
+                        style="accent",
                     ),
-                    Stage(Text("Optimize"), "primary" if step == 1 else "muted").key(
-                        "opt"
+                    Label(
+                        Anchor("opt", RelativePoint.bottom, offset_y=pt(24)),
+                        Text("Final IR")
+                        .key("result-label")
+                        .foreground_style("accent"),
+                        alignment=RelativePoint.center,
                     ),
-                    spacing=pt(32),
-                    # Reserve enough room for the label centered 24 pt below the stage.
-                    # Text metrics vary slightly across supported fonts and platforms.
-                ).padding(pt(44)),
-                Connector(
-                    Anchor("parse", RelativePoint.trailing),
-                    Anchor("opt", RelativePoint.leading),
-                ),
-                Connector(
-                    Anchor("opt", RelativePoint.bottom),
-                    Anchor("result-label", RelativePoint.top),
-                    end_cap="none",
-                    style="accent",
-                ),
-                Label(
-                    Anchor("opt", RelativePoint.bottom, offset_y=pt(24)),
-                    Text("Final IR").key("result-label").foreground_style("accent"),
-                    alignment=RelativePoint.center,
                 ),
             ),
             Text("Three passes disappear")
@@ -81,7 +80,7 @@ class Chart(CompositeView):
 
     def body(self, context):
         return ZStack(
-            Rectangle().foreground_style("surface"),
+            Rectangle(corner_radius=pt(16)).foreground_style("surface"),
             Text("Compilation throughput").font("body"),
         ).frame(height=pt(230))
 
@@ -97,7 +96,7 @@ class ResultsSlide(Slide):
                 Chart()
                 .key("results")
                 .flex()
-                .animation(Animation.smooth(fallback=FallbackPolicy.CROSSFADE))
+                .animation(Animation.smooth(fallback=FallbackPolicy.DISCRETE))
                 .animation_boundary(),
                 Metric(Text("2.7×"), Text("Throughput"))
                 .key("throughput")

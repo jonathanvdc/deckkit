@@ -1,4 +1,4 @@
-"""Editable static slides and native PowerPoint presentation builds."""
+"""Static slides and native PowerPoint presentation builds."""
 
 from __future__ import annotations
 
@@ -35,7 +35,18 @@ def _add_node(slide: Any, node: Drawable, *, name: str | None = None) -> Any:
         b = node.content_bounds
         x, y, w, h = b.x.points, b.y.points, b.width.points, b.height.points
     if isinstance(node, DrawableRectangle):
-        shape = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Pt(x), Pt(y), Pt(w), Pt(h))
+        radius = node.corner_radius.points
+        shape = slide.shapes.add_shape(
+            MSO_SHAPE.ROUNDED_RECTANGLE if radius > 0 else MSO_SHAPE.RECTANGLE,
+            Pt(x),
+            Pt(y),
+            Pt(w),
+            Pt(h),
+        )
+        if radius > 0:
+            # DrawingML expresses this adjustment as a fraction of the shape's
+            # shorter side; Deckkit's public value is an absolute length.
+            shape.adjustments[0] = radius / min(w, h)
         shape.fill.solid()
         shape.fill.fore_color.rgb = _color(node.color)
         shape.line.fill.background()
@@ -315,7 +326,16 @@ def _append_timing(
                 behavior.kind is PptxBehaviorKind.DISCRETE
                 and effect.kind is EffectKind.MOVE
             ):
-                targets.append((PptxBehaviorKind.MOTION, current))
+                assert behavior.before is not None and behavior.after is not None
+                if (behavior.before.width, behavior.before.height) != (
+                    behavior.after.width,
+                    behavior.after.height,
+                ):
+                    targets.append((PptxBehaviorKind.DISAPPEAR, current))
+                    targets.append((PptxBehaviorKind.APPEAR, build_index))
+                    active_version[effect.identity] = build_index
+                else:
+                    targets.append((PptxBehaviorKind.MOTION, current))
             else:
                 if effect.kind is EffectKind.INSERT:
                     current = build_index
@@ -408,10 +428,18 @@ def _render_slide(prs: Any, compiled_slide: CompiledSlide) -> None:
         zip(compiled_slide.animation.builds, lowered.builds), start=1
     ):
         for effect, behavior in zip(build.effects, planned.behaviors):
+            discrete_resize = (
+                effect.kind is EffectKind.MOVE
+                and behavior.kind is PptxBehaviorKind.DISCRETE
+                and behavior.before is not None
+                and behavior.after is not None
+                and (behavior.before.width, behavior.before.height)
+                != (behavior.after.width, behavior.after.height)
+            )
             if effect.kind in (EffectKind.INSERT, EffectKind.CHANGE) or (
                 effect.kind is EffectKind.MOVE
                 and behavior.kind is PptxBehaviorKind.CROSSFADE
-            ):
+            ) or discrete_resize:
                 assert effect.after is not None
                 shape = _add_node(
                     slide,

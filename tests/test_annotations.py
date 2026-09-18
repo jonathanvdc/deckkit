@@ -4,23 +4,17 @@ from dataclasses import dataclass
 
 import pytest
 
-from deckkit import (
+from deckkit.annotations import (
     Anchor,
     Annotated,
-    CompositeView,
     Connector,
-    Context,
-    HStack,
     Label,
-    Rectangle,
-    RelativePoint,
-    Text,
-    View,
-    VStack,
-    pt,
 )
 from deckkit.backends import pptx, svg
-from deckkit.drawables import DrawableConnector, DrawableText
+from deckkit.drawables import DrawableConnector, DrawableRectangle, DrawableText
+from deckkit.geometry import RelativePoint
+from deckkit.units import pt
+from deckkit.views import CompositeView, Context, HStack, Rectangle, Text, View, VStack
 
 
 def test_connector_resolves_nested_keyed_bounds(compiler):
@@ -65,6 +59,51 @@ def test_label_aligns_any_view_to_an_anchor(compiler):
 
     assert label.bounds.x + label.bounds.width / 2 == pt(50)
     assert label.bounds.y + label.bounds.height / 2 == pt(75)
+
+
+def test_annotations_expand_layout_bounds(compiler):
+    result = compiler.compile_view(
+        Annotated(
+            Rectangle()
+            .frame(width=pt(100), height=pt(40))
+            .key("target"),
+            Label(
+                Anchor(
+                    "target",
+                    RelativePoint.bottom,
+                    offset_y=pt(10),
+                ),
+                Text("Below"),
+                alignment=RelativePoint.top,
+            ),
+            Label(
+                Anchor(
+                    "target",
+                    RelativePoint.leading,
+                    offset_x=pt(-10),
+                ),
+                Text("Left"),
+                alignment=RelativePoint.trailing,
+            ),
+        )
+    )
+    annotated = result.drawable.children[0]
+    target = next(
+        node
+        for node in annotated.walk()
+        if isinstance(node, DrawableRectangle)
+    )
+    labels = {
+        node.text: node
+        for node in annotated.walk()
+        if isinstance(node, DrawableText)
+    }
+
+    assert annotated.bounds.width > pt(100)
+    assert annotated.bounds.height > pt(50)
+    assert target.bounds.x > annotated.bounds.x
+    assert labels["Left"].bounds.x == annotated.bounds.x
+    assert labels["Below"].bounds.y == target.bounds.y + pt(50)
 
 
 def test_connector_can_anchor_to_a_later_label(compiler):

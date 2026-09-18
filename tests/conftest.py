@@ -3,7 +3,9 @@ from pathlib import Path
 
 import pytest
 
-from deckkit import ClarityTheme, Compiler, FileFontResolver, Font
+from deckkit import Compiler
+from deckkit.fonts import FileFontResolver, Font
+from deckkit.themes import ClarityTheme
 
 
 @pytest.fixture
@@ -23,6 +25,6 @@ def font():
 @pytest.fixture
 def compiler(font):
     return Compiler(
-        ClarityTheme.from_font(Font("Test Font")),
-        font_resolver=FileFontResolver({Font("Test Font"): font}),
+        ClarityTheme(),
+        font_resolver=FileFontResolver({Font("Aptos"): font}),
     )
