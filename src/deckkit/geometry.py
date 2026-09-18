@@ -25,12 +25,12 @@ class RelativePoint:
     center: ClassVar[RelativePoint]
     top: ClassVar[RelativePoint]
     bottom: ClassVar[RelativePoint]
-    leading: ClassVar[RelativePoint]
-    trailing: ClassVar[RelativePoint]
-    top_leading: ClassVar[RelativePoint]
-    top_trailing: ClassVar[RelativePoint]
-    bottom_leading: ClassVar[RelativePoint]
-    bottom_trailing: ClassVar[RelativePoint]
+    left: ClassVar[RelativePoint]
+    right: ClassVar[RelativePoint]
+    top_left: ClassVar[RelativePoint]
+    top_right: ClassVar[RelativePoint]
+    bottom_left: ClassVar[RelativePoint]
+    bottom_right: ClassVar[RelativePoint]
 
     def __post_init__(self) -> None:
         if not isfinite(self.x) or not isfinite(self.y):
@@ -40,9 +40,9 @@ class RelativePoint:
 RelativePoint.center = RelativePoint(0.5, 0.5)
 RelativePoint.top = RelativePoint(0.5, 0)
 RelativePoint.bottom = RelativePoint(0.5, 1)
-RelativePoint.leading = RelativePoint(0, 0.5)
-RelativePoint.trailing = RelativePoint(1, 0.5)
-RelativePoint.top_leading = RelativePoint(0, 0)
-RelativePoint.top_trailing = RelativePoint(1, 0)
-RelativePoint.bottom_leading = RelativePoint(0, 1)
-RelativePoint.bottom_trailing = RelativePoint(1, 1)
+RelativePoint.left = RelativePoint(0, 0.5)
+RelativePoint.right = RelativePoint(1, 0.5)
+RelativePoint.top_left = RelativePoint(0, 0)
+RelativePoint.top_right = RelativePoint(1, 0)
+RelativePoint.bottom_left = RelativePoint(0, 1)
+RelativePoint.bottom_right = RelativePoint(1, 1)

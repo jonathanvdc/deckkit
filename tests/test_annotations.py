@@ -26,8 +26,8 @@ def test_connector_resolves_nested_keyed_bounds(compiler):
                 spacing=pt(20),
             ),
             Connector(
-                Anchor("from", RelativePoint.trailing),
-                Anchor("to", RelativePoint.leading),
+                Anchor("from", RelativePoint.right),
+                Anchor("to", RelativePoint.left),
             ),
         )
     )
@@ -79,11 +79,11 @@ def test_annotations_expand_layout_bounds(compiler):
             Label(
                 Anchor(
                     "target",
-                    RelativePoint.leading,
+                    RelativePoint.left,
                     offset_x=pt(-10),
                 ),
                 Text("Left"),
-                alignment=RelativePoint.trailing,
+                alignment=RelativePoint.right,
             ),
         )
     )
@@ -111,8 +111,8 @@ def test_connector_can_anchor_to_a_later_label(compiler):
         Annotated(
             Rectangle().frame(width=pt(200), height=pt(100)).key("target"),
             Connector(
-                Anchor("label", RelativePoint.trailing),
-                Anchor("target", RelativePoint.trailing),
+                Anchor("label", RelativePoint.right),
+                Anchor("target", RelativePoint.right),
             ),
             Label(
                 Anchor("target", RelativePoint.center),

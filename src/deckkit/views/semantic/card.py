@@ -15,7 +15,7 @@ from .semantic_view import SemanticView
 
 @dataclass(frozen=True)
 class Card(SemanticView):
-    """Place arbitrary content at the top leading edge of a padded surface."""
+    """Place arbitrary content at the top-left edge of a padded surface."""
 
     content: View
     background_style: str = "surface"
@@ -29,5 +29,5 @@ class Card(SemanticView):
         return ZStack(
             Rectangle(corner_radius=pt(12)).foreground_style(self.background_style),
             self.content.foreground_style(self.content_style).padding(pt(20)),
-            alignment=RelativePoint.top_leading,
+            alignment=RelativePoint.top_left,
         )

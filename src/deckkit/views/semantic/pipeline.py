@@ -78,8 +78,8 @@ class Pipeline(SemanticView):
         content: View = HStack(*keyed_stages, spacing=self.spacing)
         connectors = tuple(
             Connector(
-                Anchor(start, RelativePoint.trailing),
-                Anchor(end, RelativePoint.leading),
+                Anchor(start, RelativePoint.right),
+                Anchor(end, RelativePoint.left),
                 style=self.connector_style,
             )
             for start, end in zip(keys, keys[1:])

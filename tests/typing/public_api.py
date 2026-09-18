@@ -107,8 +107,8 @@ def check_api(compiler: Compiler) -> None:
         Annotated(
             Rectangle().key("box"),
             Connector(
-                Anchor("box", RelativePoint.leading),
-                Anchor("box", RelativePoint.trailing),
+                Anchor("box", RelativePoint.left),
+                Anchor("box", RelativePoint.right),
             ),
         ),
         Annotated,
