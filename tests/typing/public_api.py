@@ -40,12 +40,14 @@ from deckkit.views import (
 from deckkit.views.semantic import (
     Card,
     Code,
+    CodeHighlighter,
     CodeLine,
     CodeSpan,
     Metric,
     Pill,
     Pipeline,
     PipelineStage,
+    PygmentsHighlighter,
 )
 
 
@@ -127,6 +129,15 @@ def check_api(compiler: Compiler) -> None:
         Code,
     )
     assert_type(CodeTokenStyle(foreground_style="accent"), CodeTokenStyle)
+    highlighter: CodeHighlighter = PygmentsHighlighter()
+    assert_type(
+        Code.highlight("def greet(): pass", language="python"),
+        Code,
+    )
+    assert_type(
+        Code.highlight("custom", language="custom", highlighter=highlighter),
+        Code,
+    )
     assert_type(
         Pipeline(PipelineStage(Text("Parse")), PipelineStage(Text("Optimize"))),
         Pipeline,

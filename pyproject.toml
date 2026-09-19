@@ -12,7 +12,8 @@ dependencies = ["Pillow>=10", "uharfbuzz>=0.40", "typing-extensions>=4.6"]
 
 [project.optional-dependencies]
 pptx = ["python-pptx>=1.0"]
-dev = ["pytest>=8", "build>=1", "mypy>=1.19,<2", "ruff>=0.16,<1"]
+highlight = ["Pygments>=2.18"]
+dev = ["pytest>=8", "build>=1", "mypy>=1.19,<2", "ruff>=0.16,<1", "Pygments>=2.18"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -26,7 +26,7 @@ class ClarityTheme(Theme):
         {
             "comment": CodeTokenStyle(foreground_style="muted"),
             "keyword": CodeTokenStyle(foreground_style="accent"),
-            "string": CodeTokenStyle(foreground_style="accent"),
+            "literal.string": CodeTokenStyle(foreground_style="accent"),
         }
     )
 

@@ -291,6 +291,24 @@ from broad to specific—for example `keyword`, `keyword.declaration`,
 precedence. `Code` preserves whitespace and lowers to the same rich-text model as
 `Text`, which also provides a target representation for future automatic lexers.
 
+Install the `highlight` extra to generate the same semantic model with Pygments:
+
+```bash
+pip install "deckkit[highlight]"
+```
+
+```python
+source = Code.highlight(
+    'def greet(name):\n    return f"Hello, {name}"',
+    language="python",
+)
+```
+
+Automatic highlighting only performs lexing. Pygments token types such as
+`Token.Name.Function` become Deckkit scopes such as `name.function`; the active
+Deckkit theme still controls their appearance. A custom `CodeHighlighter` can
+produce `CodeLine` values for languages or parsers outside Pygments.
+
 
 ## Font resolution
 

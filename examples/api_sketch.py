@@ -10,8 +10,6 @@ from deckkit.views import CompositeView, HStack, Rectangle, Slide, Text, VStack,
 from deckkit.views.semantic import (
     BeforeAfter,
     Code,
-    CodeLine,
-    CodeSpan,
     Metric,
     Pipeline,
     PipelineStage,
@@ -46,27 +44,10 @@ class CodeSlide(Slide):
     def body(self, context):
         return VStack(
             Text("Language-aware code styling").font("title"),
-            Code(
-                CodeLine(
-                    CodeSpan("def", token="keyword.declaration"),
-                    CodeSpan(" optimize", token="name.function"),
-                    CodeSpan("(module):", token="punctuation"),
-                ),
-                CodeLine(
-                    CodeSpan("    passes", token="name"),
-                    CodeSpan(" = ", token="operator"),
-                    CodeSpan("[", token="punctuation"),
-                    CodeSpan('"lower"', token="string"),
-                    CodeSpan(", ", token="punctuation"),
-                    CodeSpan('"simplify"', token="string"),
-                    CodeSpan("]", token="punctuation"),
-                ),
-                CodeLine(
-                    CodeSpan("    return ", token="keyword.control"),
-                    CodeSpan("run", token="name.function"),
-                    CodeSpan("(module, passes)", token="punctuation"),
-                    background_style="white",
-                ),
+            Code.highlight(
+                "def optimize(module):\n"
+                '    passes = ["lower", "simplify"]\n'
+                "    return run(module, passes)",
                 language="python",
             ).frame(width=pt(760)),
             Text("Token scopes resolve through the active theme.")

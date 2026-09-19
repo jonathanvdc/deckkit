@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Protocol
 
 from ...context import Context
 from ...geometry import RelativePoint
@@ -67,6 +68,12 @@ class CodeLine:
         object.__setattr__(self, "background_style", background_style)
 
 
+class CodeHighlighter(Protocol):
+    """Convert source text into Deckkit's code representation."""
+
+    def highlight(self, source: str, language: str) -> tuple[CodeLine, ...]: ...
+
+
 @dataclass(frozen=True, init=False)
 class Code(SemanticView):
     """A themed, whitespace-preserving source-code block."""
@@ -94,6 +101,39 @@ class Code(SemanticView):
         object.__setattr__(self, "lines", structured)
         object.__setattr__(self, "language", language)
         object.__setattr__(self, "background_style", background_style)
+
+    @classmethod
+    def highlight(
+        cls,
+        source: str,
+        *,
+        language: str,
+        highlighter: CodeHighlighter | None = None,
+        background_style: str = "surface",
+    ) -> Code:
+        """Tokenize source into semantic spans using a pluggable highlighter."""
+        if not isinstance(source, str):
+            raise TypeError("Code source must be a string")
+        _scope(language, "Code.language")
+        if highlighter is None:
+            from .pygments_highlighter import PygmentsHighlighter
+
+            highlighter = PygmentsHighlighter()
+        lines = highlighter.highlight(source, language)
+        if (
+            not isinstance(lines, tuple)
+            or not lines
+            or not all(isinstance(line, CodeLine) for line in lines)
+        ):
+            raise TypeError(
+                "Code highlighters must return a nonempty tuple of CodeLine"
+            )
+        return cls(
+            lines[0],
+            *lines[1:],
+            language=language,
+            background_style=background_style,
+        )
 
     def default_body(self, context: Context) -> View:
         theme = context.environment.theme
