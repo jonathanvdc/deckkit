@@ -25,6 +25,10 @@ from deckkit.layout import (
 from deckkit.themes import CodeTokenStyle, Theme
 from deckkit.units import Length, cm, inch, pt
 from deckkit.views import (
+    Code,
+    CodeHighlighter,
+    CodeLine,
+    CodeSpan,
     CompositeView,
     Context,
     EnvironmentKey,
@@ -36,18 +40,15 @@ from deckkit.views import (
     TextLine,
     TextSpan,
     View,
+    PygmentsHighlighter,
 )
 from deckkit.views.semantic import (
     Card,
-    Code,
-    CodeHighlighter,
-    CodeLine,
-    CodeSpan,
+    CodeBlock,
     Metric,
     Pill,
     Pipeline,
     PipelineStage,
-    PygmentsHighlighter,
 )
 
 
@@ -129,6 +130,7 @@ def check_api(compiler: Compiler) -> None:
         Code,
     )
     assert_type(CodeTokenStyle(foreground_style="accent"), CodeTokenStyle)
+    assert_type(CodeBlock(Code("print('hello')")), CodeBlock)
     highlighter: CodeHighlighter = PygmentsHighlighter()
     assert_type(
         Code.highlight("def greet(): pass", language="python"),

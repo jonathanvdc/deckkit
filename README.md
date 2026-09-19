@@ -267,21 +267,25 @@ source = Text(
 Use `flow="wrapped"` for ordinary wrapping across span boundaries and
 `flow="verbatim"` to preserve spaces and logical lines without wrapping.
 
-Use the semantic `Code` view when spans represent language tokens rather than
-literal presentation. Token scopes are open, hierarchical strings, so each
-language can use its own vocabulary without extending a shared enum:
+Use `Code` when spans represent language tokens rather than literal presentation.
+Token scopes are open, hierarchical strings, so each language can use its own
+vocabulary without extending a shared enum. Wrap it in the semantic `CodeBlock`
+when it should appear on a padded surface:
 
 ```python
-from deckkit.views.semantic import Code, CodeLine, CodeSpan
+from deckkit.views import Code, CodeLine, CodeSpan
+from deckkit.views.semantic import CodeBlock
 
-source = Code(
-    CodeLine(
-        CodeSpan("def", token="keyword.declaration"),
-        CodeSpan(" greet", token="name.function"),
-        CodeSpan("(name):", token="punctuation"),
-    ),
-    CodeLine('    return f"Hello, {name}"'),
-    language="python",
+source = CodeBlock(
+    Code(
+        CodeLine(
+            CodeSpan("def", token="keyword.declaration"),
+            CodeSpan(" greet", token="name.function"),
+            CodeSpan("(name):", token="punctuation"),
+        ),
+        CodeLine('    return f"Hello, {name}"'),
+        language="python",
+    )
 )
 ```
 
@@ -298,9 +302,11 @@ pip install "deckkit[highlight]"
 ```
 
 ```python
-source = Code.highlight(
-    'def greet(name):\n    return f"Hello, {name}"',
-    language="python",
+source = CodeBlock(
+    Code.highlight(
+        'def greet(name):\n    return f"Hello, {name}"',
+        language="python",
+    )
 )
 ```
 

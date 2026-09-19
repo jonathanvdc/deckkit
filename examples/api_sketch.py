@@ -6,10 +6,19 @@ from deckkit.animation import Animation, FallbackPolicy, SlideTimeline, Transiti
 from deckkit.annotations import Anchor, Connector, Label
 from deckkit.geometry import RelativePoint
 from deckkit.units import pt
-from deckkit.views import CompositeView, HStack, Rectangle, Slide, Text, VStack, ZStack
+from deckkit.views import (
+    Code,
+    CompositeView,
+    HStack,
+    Rectangle,
+    Slide,
+    Text,
+    VStack,
+    ZStack,
+)
 from deckkit.views.semantic import (
     BeforeAfter,
-    Code,
+    CodeBlock,
     Metric,
     Pipeline,
     PipelineStage,
@@ -44,11 +53,13 @@ class CodeSlide(Slide):
     def body(self, context):
         return VStack(
             Text("Language-aware code styling").font("title"),
-            Code.highlight(
-                "def optimize(module):\n"
-                '    passes = ["lower", "simplify"]\n'
-                "    return run(module, passes)",
-                language="python",
+            CodeBlock(
+                Code.highlight(
+                    "def optimize(module):\n"
+                    '    passes = ["lower", "simplify"]\n'
+                    "    return run(module, passes)",
+                    language="python",
+                )
             ).frame(width=pt(760)),
             Text("Token scopes resolve through the active theme.")
             .font("caption")

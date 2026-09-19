@@ -5,7 +5,8 @@ import pytest
 from deckkit.expanded_views import ExpandedText
 from deckkit.theme import CodeTokenStyle
 from deckkit.themes import ClarityTheme
-from deckkit.views.semantic import Code, CodeLine, CodeSpan, PygmentsHighlighter
+from deckkit.views import Code, CodeLine, CodeSpan, PygmentsHighlighter
+from deckkit.views.semantic import CodeBlock
 
 
 def test_code_resolves_cascading_language_token_scopes(compiler):
@@ -46,6 +47,17 @@ def test_code_preserves_source_whitespace(compiler):
     compiled = compiler.compile_view(Code("\tvalue\n\n  return value"))
     text = next(node for node in compiled.drawable.walk() if hasattr(node, "metrics"))
     assert text.metrics.lines == ("    value", "", "  return value")
+
+
+def test_code_block_adds_themed_container(compiler):
+    from deckkit.drawables import DrawableRectangle
+
+    compiled = compiler.compile_view(CodeBlock(Code("value")))
+    rectangles = [
+        node for node in compiled.drawable.walk() if isinstance(node, DrawableRectangle)
+    ]
+    assert len(rectangles) == 1
+    assert rectangles[0].color == "#E8EEF5"
 
 
 def test_pygments_highlighting_produces_manual_code_model():

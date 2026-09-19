@@ -8,6 +8,7 @@ from ..context import (
     ForegroundStyleKey,
     State,
 )
+from .code import Code, CodeHighlighter, CodeLine, CodeSpan
 from .hstack import HStack
 from .image import Image
 from .layout_view import LayoutView
@@ -43,5 +44,14 @@ __all__ = [
 
 from .composite_view import CompositeView
 from .primitive_view import PrimitiveView
+from .pygments_highlighter import PygmentsHighlighter
 
-__all__ += ["CompositeView", "PrimitiveView"]
+__all__ += [
+    "Code",
+    "CodeHighlighter",
+    "CodeLine",
+    "CodeSpan",
+    "CompositeView",
+    "PrimitiveView",
+    "PygmentsHighlighter",
+]

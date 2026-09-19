@@ -1,4 +1,4 @@
-"""Optional Pygments adapter for semantic code spans."""
+"""Optional Pygments adapter for code spans."""
 
 from __future__ import annotations
 

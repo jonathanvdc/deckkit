@@ -1,18 +1,14 @@
-"""Semantic source-code blocks with theme-resolved token scopes."""
+"""Syntax-aware, whitespace-preserving code text."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Protocol
 
-from ...context import Context
-from ...geometry import RelativePoint
-from ...units import pt
-from ..rectangle import Rectangle
-from ..text import Text, TextLine, TextSpan
-from ..view import View
-from ..zstack import ZStack
-from .semantic_view import SemanticView
+from ..context import Context
+from .composite_view import CompositeView
+from .text import Text, TextLine, TextSpan
+from .view import View
 
 
 def _scope(value: str | None, name: str) -> None:
@@ -75,19 +71,17 @@ class CodeHighlighter(Protocol):
 
 
 @dataclass(frozen=True, init=False)
-class Code(SemanticView):
-    """A themed, whitespace-preserving source-code block."""
+class Code(CompositeView):
+    """Syntax-aware code text without block-level decoration."""
 
     lines: tuple[CodeLine, ...]
     language: str | None
-    background_style: str
 
     def __init__(
         self,
         content: str | CodeLine,
         *lines: CodeLine,
         language: str | None = None,
-        background_style: str = "surface",
     ) -> None:
         _scope(language, "Code.language")
         if isinstance(content, str):
@@ -100,7 +94,6 @@ class Code(SemanticView):
             raise TypeError("Code content must be a string or CodeLine")
         object.__setattr__(self, "lines", structured)
         object.__setattr__(self, "language", language)
-        object.__setattr__(self, "background_style", background_style)
 
     @classmethod
     def highlight(
@@ -109,7 +102,6 @@ class Code(SemanticView):
         *,
         language: str,
         highlighter: CodeHighlighter | None = None,
-        background_style: str = "surface",
     ) -> Code:
         """Tokenize source into semantic spans using a pluggable highlighter."""
         if not isinstance(source, str):
@@ -128,14 +120,9 @@ class Code(SemanticView):
             raise TypeError(
                 "Code highlighters must return a nonempty tuple of CodeLine"
             )
-        return cls(
-            lines[0],
-            *lines[1:],
-            language=language,
-            background_style=background_style,
-        )
+        return cls(lines[0], *lines[1:], language=language)
 
-    def default_body(self, context: Context) -> View:
+    def body(self, context: Context) -> View:
         theme = context.environment.theme
         lines = []
         for line in self.lines:
@@ -151,9 +138,4 @@ class Code(SemanticView):
                     )
                 )
             lines.append(TextLine(*spans, background_style=line.background_style))
-        text = Text(lines[0], *lines[1:], flow="verbatim").font("code")
-        return ZStack(
-            Rectangle(corner_radius=pt(8)).foreground_style(self.background_style),
-            text.padding(pt(16)),
-            alignment=RelativePoint.top_left,
-        )
+        return Text(lines[0], *lines[1:], flow="verbatim").font("code")
