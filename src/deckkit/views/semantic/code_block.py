@@ -11,6 +11,7 @@ from ..code import Code
 from ..rectangle import Rectangle
 from ..view import View
 from ..zstack import ZStack
+from .card import Card
 from .semantic_view import SemanticView
 
 
@@ -26,8 +27,4 @@ class CodeBlock(SemanticView):
             raise TypeError("CodeBlock.content must be Code")
 
     def default_body(self, context: Context) -> View:
-        return ZStack(
-            Rectangle(corner_radius=pt(8)).foreground_style(self.background_style),
-            self.content.padding(pt(16)),
-            alignment=RelativePoint.top_left,
-        )
+        return Card(self.content, background_style=self.background_style)
