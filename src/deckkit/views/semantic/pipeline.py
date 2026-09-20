@@ -9,25 +9,12 @@ from ...annotations import Anchor, Annotated, Annotation, Connector
 from ...context import Context
 from ...geometry import RelativePoint
 from ...theme import Color, ColorStyle, PrimaryColor, SpacingUnit
-from ...tokens import DesignToken
+from ...tokens import DesignToken, TokenResolver
 from ...units import Length, require_length
 from ..hstack import HStack
 from ..view import View
 from .pipeline_stage import PipelineStage
 from .semantic_view import SemanticView
-
-
-@dataclass(frozen=True)
-class PipelineStyle:
-    spacing: Length
-    connector: DesignToken[Color]
-
-
-PipelineStyleToken = DesignToken[PipelineStyle](
-    "component.pipeline",
-    lambda values: PipelineStyle(values[SpacingUnit] * 8, PrimaryColor),
-    value_type=PipelineStyle,
-)
 
 
 @dataclass(frozen=True, init=False)
@@ -49,6 +36,21 @@ class Pipeline(SemanticView):
         ValueError: If no stages are supplied or spacing is negative.
         TypeError: If stages, annotations, or spacing have invalid types.
     """
+
+    @dataclass(frozen=True)
+    class Style:
+        spacing: Length
+        connector: DesignToken[Color]
+
+    @staticmethod
+    def _default_style(values: TokenResolver) -> Style:
+        return Pipeline.Style(values[SpacingUnit] * 8, PrimaryColor)
+
+    style_token = DesignToken[Style](
+        "component.pipeline",
+        lambda values: Pipeline._default_style(values),
+        value_type=Style,
+    )
 
     stages: tuple[PipelineStage, ...]
     spacing: Length | None
@@ -79,7 +81,7 @@ class Pipeline(SemanticView):
 
     def body(self, context: Context) -> View:
         """Arrange stages horizontally and connect adjacent stage anchors."""
-        style = context.environment[PipelineStyleToken]
+        style = context.environment[self.style_token]
         keyed_stages: list[PipelineStage] = []
         keys: list[str] = []
         for index, stage in enumerate(self.stages):

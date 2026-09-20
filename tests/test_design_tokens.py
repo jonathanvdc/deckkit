@@ -19,7 +19,7 @@ from deckkit.themes import (
 )
 from deckkit.units import pt
 from deckkit.views import CompositeView, Context, Rectangle, Text, View, VStack
-from deckkit.views.semantic import Card, CardStyleToken
+from deckkit.views.semantic import Card
 
 
 def test_computed_tokens_recompute_in_child_scopes():
@@ -133,8 +133,8 @@ def test_view_token_scope_recomputes_derived_values(compiler):
 
 def test_component_style_can_be_partially_derived_in_a_subtree(compiler):
     square_card = Card(Text("Content")).token(
-        CardStyleToken,
-        CardStyleToken.derive(lambda style: replace(style, corner_radius=pt(0))),
+        Card.style_token,
+        Card.style_token.derive(lambda style: replace(style, corner_radius=pt(0))),
     )
     result = compiler.compile_view(square_card)
     background = next(

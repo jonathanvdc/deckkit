@@ -13,28 +13,11 @@ from ...theme import (
     SpacingUnit,
     Typography,
 )
-from ...tokens import DesignToken
+from ...tokens import DesignToken, TokenResolver
 from ...units import Length
 from ..view import View
 from ..vstack import VStack
 from .semantic_view import SemanticView
-
-
-@dataclass(frozen=True)
-class MetricStyle:
-    value_font: DesignToken[Typography]
-    value_color: DesignToken[Color]
-    label_font: DesignToken[Typography]
-    spacing: Length
-
-
-MetricStyleToken = DesignToken[MetricStyle](
-    "component.metric",
-    lambda values: MetricStyle(
-        MetricTextStyle, AccentColor, CaptionTextStyle, values[SpacingUnit] * 2
-    ),
-    value_type=MetricStyle,
-)
 
 
 @dataclass(frozen=True)
@@ -50,6 +33,25 @@ class Metric(SemanticView):
         label: Supporting content that explains the value.
     """
 
+    @dataclass(frozen=True)
+    class Style:
+        value_font: DesignToken[Typography]
+        value_color: DesignToken[Color]
+        label_font: DesignToken[Typography]
+        spacing: Length
+
+    @staticmethod
+    def _default_style(values: TokenResolver) -> Style:
+        return Metric.Style(
+            MetricTextStyle, AccentColor, CaptionTextStyle, values[SpacingUnit] * 2
+        )
+
+    style_token = DesignToken[Style](
+        "component.metric",
+        lambda values: Metric._default_style(values),
+        value_type=Style,
+    )
+
     value: View
     label: View
 
@@ -61,7 +63,7 @@ class Metric(SemanticView):
 
     def body(self, context: Context) -> View:
         """Stack and style the value and label using the default recipe."""
-        style = context.environment[MetricStyleToken]
+        style = context.environment[self.style_token]
         return VStack(
             self.value.font(style.value_font).foreground_style(style.value_color),
             self.label.font(style.label_font),

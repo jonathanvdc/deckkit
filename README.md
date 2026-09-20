@@ -403,11 +403,11 @@ value:
 from dataclasses import replace
 
 from deckkit.units import pt
-from deckkit.views.semantic import CardStyleToken
+from deckkit.views.semantic import Card
 
 compact = card.token(
-    CardStyleToken,
-    CardStyleToken.derive(lambda style: replace(style, padding=pt(12))),
+    Card.style_token,
+    Card.style_token.derive(lambda style: replace(style, padding=pt(12))),
 )
 ```
 

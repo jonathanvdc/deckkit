@@ -14,7 +14,7 @@ from ...theme import (
     SpacingUnit,
     SurfaceColor,
 )
-from ...tokens import DesignToken
+from ...tokens import DesignToken, TokenResolver
 from ...units import Length
 from ..hstack import HStack
 from ..text import Text
@@ -23,34 +23,6 @@ from ..vstack import VStack
 from .card import Card
 from .pill import Pill
 from .semantic_view import SemanticView
-
-
-@dataclass(frozen=True)
-class BeforeAfterStyle:
-    label_width: Length
-    label_height: Length
-    column_spacing: Length
-    takeaway_spacing: Length
-    before_background: DesignToken[Color]
-    before_foreground: DesignToken[Color]
-    after_background: DesignToken[Color]
-    after_foreground: DesignToken[Color]
-
-
-BeforeAfterStyleToken = DesignToken[BeforeAfterStyle](
-    "component.before-after",
-    lambda values: BeforeAfterStyle(
-        values[SpacingUnit] * 22,
-        values[SpacingUnit] * 9,
-        values[SpacingUnit] * 6,
-        values[SpacingUnit] * 8,
-        SurfaceColor,
-        PrimaryColor,
-        AccentColor,
-        OnAccentColor,
-    ),
-    value_type=BeforeAfterStyle,
-)
 
 
 @dataclass(frozen=True)
@@ -68,6 +40,36 @@ class BeforeAfter(SemanticView):
         takeaway: Conclusion displayed below the comparison.
     """
 
+    @dataclass(frozen=True)
+    class Style:
+        label_width: Length
+        label_height: Length
+        column_spacing: Length
+        takeaway_spacing: Length
+        before_background: DesignToken[Color]
+        before_foreground: DesignToken[Color]
+        after_background: DesignToken[Color]
+        after_foreground: DesignToken[Color]
+
+    @staticmethod
+    def _default_style(values: TokenResolver) -> Style:
+        return BeforeAfter.Style(
+            values[SpacingUnit] * 22,
+            values[SpacingUnit] * 9,
+            values[SpacingUnit] * 6,
+            values[SpacingUnit] * 8,
+            SurfaceColor,
+            PrimaryColor,
+            AccentColor,
+            OnAccentColor,
+        )
+
+    style_token = DesignToken[Style](
+        "component.before-after",
+        lambda values: BeforeAfter._default_style(values),
+        value_type=Style,
+    )
+
     before: View
     after: View
     takeaway: View
@@ -81,7 +83,7 @@ class BeforeAfter(SemanticView):
 
     def body(self, context: Context) -> View:
         """Arrange the comparison using the default horizontal recipe."""
-        style = context.environment[BeforeAfterStyleToken]
+        style = context.environment[self.style_token]
         before = Card(
             VStack(
                 Pill(

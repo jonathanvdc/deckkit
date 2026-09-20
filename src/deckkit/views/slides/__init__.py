@@ -2,11 +2,7 @@
 
 from .slide_margins import SlideMargin, SlideMargins
 from .slide_with_margins import SlideWithMargins
-from .title_and_content import (
-    TitleAndContent,
-    TitleAndContentStyle,
-    TitleAndContentStyleToken,
-)
+from .title_and_content import TitleAndContent
 from .title_and_content_slide import TitleAndContentSlide
 
 __all__ = [
@@ -15,6 +11,4 @@ __all__ = [
     "SlideWithMargins",
     "TitleAndContent",
     "TitleAndContentSlide",
-    "TitleAndContentStyle",
-    "TitleAndContentStyleToken",
 ]

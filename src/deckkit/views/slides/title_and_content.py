@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from ...context import Context
 from ...theme import SpacingUnit, TitleTextStyle, Typography
-from ...tokens import DesignToken
+from ...tokens import DesignToken, TokenResolver
 from ...units import Length
 from ..semantic.semantic_view import SemanticView
 from ..view import View
@@ -14,21 +14,23 @@ from ..vstack import VStack
 
 
 @dataclass(frozen=True)
-class TitleAndContentStyle:
-    title_font: DesignToken[Typography]
-    spacing: Length
-
-
-TitleAndContentStyleToken = DesignToken[TitleAndContentStyle](
-    "component.title-and-content",
-    lambda values: TitleAndContentStyle(TitleTextStyle, values[SpacingUnit] * 8),
-    value_type=TitleAndContentStyle,
-)
-
-
-@dataclass(frozen=True)
 class TitleAndContent(SemanticView):
     """A title followed by content."""
+
+    @dataclass(frozen=True)
+    class Style:
+        title_font: DesignToken[Typography]
+        spacing: Length
+
+    @staticmethod
+    def _default_style(values: TokenResolver) -> Style:
+        return TitleAndContent.Style(TitleTextStyle, values[SpacingUnit] * 8)
+
+    style_token = DesignToken[Style](
+        "component.title-and-content",
+        lambda values: TitleAndContent._default_style(values),
+        value_type=Style,
+    )
 
     title: View
     content: View
@@ -39,7 +41,7 @@ class TitleAndContent(SemanticView):
                 raise TypeError(f"TitleAndContent.{name} must be a View")
 
     def body(self, context: Context) -> View:
-        style = context.environment[TitleAndContentStyleToken]
+        style = context.environment[self.style_token]
         return VStack(
             self.title.font(style.title_font),
             self.content,

@@ -13,32 +13,12 @@ from ...theme import (
     SpacingUnit,
     SurfaceColor,
 )
-from ...tokens import DesignToken
+from ...tokens import DesignToken, TokenResolver
 from ...units import Length
 from ..rectangle import Rectangle
 from ..view import View
 from ..zstack import ZStack
 from .semantic_view import SemanticView
-
-
-@dataclass(frozen=True)
-class PillStyle:
-    background: DesignToken[Color]
-    foreground: DesignToken[Color]
-    padding: Length
-    corner_radius: Length
-
-
-PillStyleToken = DesignToken[PillStyle](
-    "component.pill",
-    lambda values: PillStyle(
-        SurfaceColor,
-        PrimaryColor,
-        values[SpacingUnit] * 2,
-        values[SpacingUnit] * (4.5 * values[RadiusScale]),
-    ),
-    value_type=PillStyle,
-)
 
 
 @dataclass(frozen=True)
@@ -51,6 +31,26 @@ class Pill(SemanticView):
         content_style: Theme color role inherited by the content.
     """
 
+    @dataclass(frozen=True)
+    class Style:
+        background: DesignToken[Color]
+        foreground: DesignToken[Color]
+        padding: Length
+        corner_radius: Length
+
+    @staticmethod
+    def _default_style(values: TokenResolver) -> Style:
+        return Pill.Style(
+            SurfaceColor,
+            PrimaryColor,
+            values[SpacingUnit] * 2,
+            values[SpacingUnit] * (4.5 * values[RadiusScale]),
+        )
+
+    style_token = DesignToken[Style](
+        "component.pill", lambda values: Pill._default_style(values), value_type=Style
+    )
+
     content: View
     background_style: ColorStyle | None = None
     content_style: ColorStyle | None = None
@@ -61,7 +61,7 @@ class Pill(SemanticView):
 
     def body(self, context: Context) -> View:
         """Place padded content over a themed capsule."""
-        style = context.environment[PillStyleToken]
+        style = context.environment[self.style_token]
         return ZStack(
             Rectangle(corner_radius=style.corner_radius).foreground_style(
                 self.background_style or style.background
