@@ -14,11 +14,11 @@ from ...units import Length, require_length
 from ..hstack import HStack
 from ..view import View
 from .pipeline_stage import PipelineStage
-from .semantic_view import SemanticView
+from .semantic_view import StyledSemanticView
 
 
 @dataclass(frozen=True, init=False)
-class Pipeline(SemanticView):
+class Pipeline(StyledSemanticView):
     """Lay out pipeline stages and connect each adjacent pair.
 
     Stages are assigned stable generated keys unless they already have explicit

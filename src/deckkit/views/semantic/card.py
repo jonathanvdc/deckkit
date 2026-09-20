@@ -20,11 +20,11 @@ from ..modifier_views import unbounded
 from ..rectangle import Rectangle
 from ..view import View
 from ..zstack import ZStack
-from .semantic_view import SemanticView
+from .semantic_view import StyledSemanticView
 
 
 @dataclass(frozen=True)
-class Card(SemanticView):
+class Card(StyledSemanticView):
     """Place arbitrary content at the top-left edge of a padded surface."""
 
     @dataclass(frozen=True)

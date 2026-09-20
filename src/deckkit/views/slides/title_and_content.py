@@ -8,13 +8,13 @@ from ...context import Context
 from ...theme import SpacingUnit, TitleTextStyle, Typography
 from ...tokens import DesignToken, TokenResolver
 from ...units import Length
-from ..semantic.semantic_view import SemanticView
+from ..semantic.semantic_view import StyledSemanticView
 from ..view import View
 from ..vstack import VStack
 
 
 @dataclass(frozen=True)
-class TitleAndContent(SemanticView):
+class TitleAndContent(StyledSemanticView):
     """A title followed by content."""
 
     @dataclass(frozen=True)

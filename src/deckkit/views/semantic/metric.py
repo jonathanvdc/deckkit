@@ -17,11 +17,11 @@ from ...tokens import DesignToken, TokenResolver
 from ...units import Length
 from ..view import View
 from ..vstack import VStack
-from .semantic_view import SemanticView
+from .semantic_view import StyledSemanticView
 
 
 @dataclass(frozen=True)
-class Metric(SemanticView):
+class Metric(StyledSemanticView):
     """Emphasize a value together with a short descriptive label.
 
     Both slots accept arbitrary :class:`~deckkit.views.View` values. The default

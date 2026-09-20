@@ -3,8 +3,13 @@
 from __future__ import annotations
 
 from abc import ABC
+from collections.abc import Callable
+from typing import Any
+
+from typing_extensions import Self
 
 from ...context import Context
+from ...tokens import DesignToken
 from ..composite_view import CompositeView
 from ..view import View
 
@@ -23,3 +28,17 @@ class SemanticView(CompositeView, ABC):
         if recipe is None:
             recipe = self.body(context)
         return recipe
+
+
+class StyledSemanticView(SemanticView, ABC):
+    """A semantic component with a scoped, replaceable style token."""
+
+    style_token: DesignToken[Any]
+
+    def with_style(self, style: object) -> Self:
+        """Replace this component's style within its view subtree."""
+        return self.with_token(self.style_token, self.style_token.set(style))
+
+    def transform_style(self, transform: Callable[[Any], Any]) -> Self:
+        """Derive this component's style from the inherited style."""
+        return self.with_token(self.style_token, self.style_token.derive(transform))

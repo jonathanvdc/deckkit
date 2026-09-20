@@ -11,11 +11,11 @@ from ...units import Length
 from ..rectangle import Rectangle
 from ..view import View
 from ..zstack import ZStack
-from .semantic_view import SemanticView
+from .semantic_view import StyledSemanticView
 
 
 @dataclass(frozen=True)
-class PipelineStage(SemanticView):
+class PipelineStage(StyledSemanticView):
     """Display a labeled stage suitable for use in a :class:`Pipeline`.
 
     Args:

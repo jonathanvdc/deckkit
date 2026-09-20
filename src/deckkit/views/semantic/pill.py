@@ -18,11 +18,11 @@ from ...units import Length
 from ..rectangle import Rectangle
 from ..view import View
 from ..zstack import ZStack
-from .semantic_view import SemanticView
+from .semantic_view import StyledSemanticView
 
 
 @dataclass(frozen=True)
-class Pill(SemanticView):
+class Pill(StyledSemanticView):
     """Display arbitrary content over a capsule-shaped background.
 
     Args:

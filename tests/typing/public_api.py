@@ -139,6 +139,11 @@ def check_api(compiler: Compiler) -> None:
     )
     assert_type(Pill(HStack(Text("New"), Text("label"))), Pill)
     assert_type(Card(HStack(Text("Heading"), Text("content"))), Card)
+    card = Card(Text("Content"))
+    style = compiler.environment[Card.style_token]
+    assert_type(style, Card.Style)
+    assert_type(card.with_style(style), Card)
+    assert_type(card.transform_style(lambda style: style), Card)
     assert_type(
         Code(
             CodeLine(

@@ -7,7 +7,7 @@ from .metric import Metric
 from .pill import Pill
 from .pipeline import Pipeline
 from .pipeline_stage import PipelineStage
-from .semantic_view import SemanticView
+from .semantic_view import SemanticView, StyledSemanticView
 
 __all__ = [
     "BeforeAfter",
@@ -18,4 +18,5 @@ __all__ = [
     "Pipeline",
     "PipelineStage",
     "SemanticView",
+    "StyledSemanticView",
 ]

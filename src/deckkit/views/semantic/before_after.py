@@ -22,11 +22,11 @@ from ..view import View
 from ..vstack import VStack
 from .card import Card
 from .pill import Pill
-from .semantic_view import SemanticView
+from .semantic_view import StyledSemanticView
 
 
 @dataclass(frozen=True)
-class BeforeAfter(SemanticView):
+class BeforeAfter(StyledSemanticView):
     """Present two states side by side with a concluding takeaway.
 
     All three content slots accept arbitrary :class:`~deckkit.views.View` values,
