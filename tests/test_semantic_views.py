@@ -12,7 +12,7 @@ from deckkit.fonts import (
     FileFontResolver,
     Font,
 )
-from deckkit.themes import ClarityTheme
+from deckkit.themes import ClarityTheme, semantic_renderer
 from deckkit.units import pt
 from deckkit.views import Context, HStack, Rectangle, Slide, Text, View, VStack
 from deckkit.views.semantic import (
@@ -60,24 +60,37 @@ class CustomTitleAndContentSlide(TitleAndContentSlide):
 
 
 class RecipeTheme(ClarityTheme):
-    def render_semantic(self, component: SemanticView, context: Context) -> View | None:
-        if isinstance(component, Metric):
-            return HStack(component.label, component.value)
-        if isinstance(component, PipelineStage):
-            return VStack(Text("ClarityTheme stage"), component.label)
-        if isinstance(component, CustomSemantic):
-            return VStack(Text("ClarityTheme custom"), component.content)
-        if isinstance(component, CustomSlide):
-            return VStack(Text("ClarityTheme slide"), component.content)
-        if isinstance(component, SlideMargins):
-            return VStack(Text("ClarityTheme margins"), component.content)
-        if isinstance(component, TitleAndContent):
-            return VStack(
-                Text("ClarityTheme title and content"),
-                component.title,
-                component.content,
-            )
-        return super().render_semantic(component, context)
+    @semantic_renderer(Metric)
+    def render_metric(self, component: Metric, context: Context) -> View:
+        return HStack(component.label, component.value)
+
+    @semantic_renderer(PipelineStage)
+    def render_pipeline_stage(self, component: PipelineStage, context: Context) -> View:
+        return VStack(Text("ClarityTheme stage"), component.label)
+
+    @semantic_renderer(CustomSemantic)
+    def render_custom_semantic(
+        self, component: CustomSemantic, context: Context
+    ) -> View:
+        return VStack(Text("ClarityTheme custom"), component.content)
+
+    @semantic_renderer(CustomSlide)
+    def render_custom_slide(self, component: CustomSlide, context: Context) -> View:
+        return VStack(Text("ClarityTheme slide"), component.content)
+
+    @semantic_renderer(SlideMargins)
+    def render_slide_margins(self, component: SlideMargins, context: Context) -> View:
+        return VStack(Text("ClarityTheme margins"), component.content)
+
+    @semantic_renderer(TitleAndContent)
+    def render_title_and_content(
+        self, component: TitleAndContent, context: Context
+    ) -> View:
+        return VStack(
+            Text("ClarityTheme title and content"),
+            component.title,
+            component.content,
+        )
 
 
 def test_rich_content_in_every_semantic_slot(font, tmp_path):

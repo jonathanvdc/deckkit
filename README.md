@@ -212,11 +212,10 @@ comparison = BeforeAfter(
 )
 ```
 
-All semantic components inherit `SemanticView`. During expansion it asks
-`theme.render_semantic(component, context)` for a view. Returning `None` selects
-the component's authored `body(context)`. Themes can override built-in or
-application-defined semantic types through this single hook. Recipes remain ordinary
-view composition.
+All semantic components inherit `SemanticView`. Themes register type-specific
+rendering methods with `@semantic_renderer(ComponentType)`; an unregistered component
+uses its authored `body(context)`. Recipes remain ordinary view composition, without
+an `isinstance` dispatch chain.
 `Metric.value`, `Metric.label`, `Pill.content`, `Card.content`, `PipelineStage.label`, and every
 `BeforeAfter` content slot requires views; wrap strings in `Text(...)`. A `Pill` can
 therefore contain text or richer composed content. Style tokens such as
@@ -249,7 +248,7 @@ view types produce a diagnostic instead of implicitly invoking a body method.
 ## Typography and example themes
 
 Core `Theme` has no editorial flag or built-in structural recipe. The example
-`examples.themes.EditorialTheme` subclasses it and overrides `render_semantic`.
+`examples.themes.EditorialTheme` subclasses it and registers semantic renderers.
 
 `ClarityTheme()` is a complete theme with an Aptos-based title/body/caption/metric
 scale. Its foundational values feed a graph of computed design tokens. Changing the
@@ -429,9 +428,9 @@ assert surface.to_hex().startswith("#")
 ```
 
 The bundled `ClarityTheme` supplies the blue/teal palette and Aptos-based defaults.
-Its optional `render_semantic` hook remains the structural escape hatch: it can replace
-a semantic component's canonical composition when token and component-style changes
-are insufficient. The editorial example demonstrates such a structural override.
+Its semantic renderer registry remains the structural escape hatch: decorated methods
+can replace a component's canonical composition when token and component-style
+changes are insufficient. The editorial example demonstrates such an override.
 
 Themes provide strongly typed overrides directly through their constructor or
 `token_overrides()`. There is no parallel string-role API; foundational changes keep

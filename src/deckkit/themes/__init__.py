@@ -25,6 +25,7 @@ from ..theme import (
     TitleTextStyle,
     TypeScale,
     Typography,
+    semantic_renderer,
 )
 from ..tokens import (
     Alias,
@@ -74,4 +75,5 @@ __all__ = [
     "TypeScale",
     "Typography",
     "Value",
+    "semantic_renderer",
 ]

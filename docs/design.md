@@ -128,8 +128,9 @@ example PPTX geometry remains unchanged after migrating literal points to `pt(..
 ## Semantic composition convention
 
 Each semantic view inherits `SemanticView` and defines `body(context)`.
-Composite expansion asks `Theme.render_semantic(component, context)` first;
-`None` delegates to the authored body. There is no renderer-side semantic dispatch.
+Themes register component-specific methods with `@semantic_renderer(ComponentType)`;
+an unregistered type delegates to the authored body. There is no renderer-side
+semantic dispatch.
 All presentation content slots are views (including metric values/labels and stage
 labels); emphasis and similar design tokens remain scalar properties. Theme recipes
 must compose the supplied views, preserving their keys and modifiers. The editorial
@@ -158,7 +159,7 @@ custom `class X(View)` compositions must migrate to `class X(CompositeView)`.
 ## Typography and example themes
 
 Core `Theme` has no editorial flag or built-in structural recipe. The example
-`examples.themes.EditorialTheme` subclasses it and overrides `render_semantic`.
+`examples.themes.EditorialTheme` subclasses it and registers semantic renderers.
 
 `ClarityTheme()` is a complete theme with an Aptos-based title/body/caption/metric
 scale. Font choices are part of the theme rather than constructor configuration.
@@ -205,10 +206,10 @@ index. Font files are not embedded in SVG or PPTX; viewing machines need the fon
 
 ## Theme contract and Clarity
 
-`Theme` is an abstract design-system interface: subclasses implement `color(role)`
-and `text_style(role)`. It owns no palette, typography mapping or scale. Its optional
-`render_semantic` hook returns `None` by default, letting components use their own
-composition; this is fallback behavior, not a design recipe.
+`Theme` owns an extensible design-token graph rather than a fixed palette or typography
+schema. Its semantic renderer registry is empty by default, letting components use
+their own composition; registered methods are structural overrides, not default
+recipes.
 
 The bundled `ClarityTheme` (`deckkit.themes.clarity`) supplies the original blue/teal
 palette and an Aptos-based title/body/caption/metric scale. The editorial example

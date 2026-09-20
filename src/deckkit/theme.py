@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from math import isfinite
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, ClassVar, Union
+from typing import TYPE_CHECKING, Any, ClassVar, TypeVar, Union, cast
 
 from typing_extensions import TypeAlias
 
@@ -16,6 +16,21 @@ if TYPE_CHECKING:
     from .context import Context
     from .views import View
     from .views.semantic import SemanticView
+
+F = TypeVar("F", bound=Callable[..., object])
+_SEMANTIC_COMPONENT = "__deckkit_semantic_component__"
+
+
+def semantic_renderer(component_type: type[object]) -> Callable[[F], F]:
+    """Register a theme method as the renderer for a semantic component type."""
+    if not isinstance(component_type, type):
+        raise TypeError("Semantic renderer targets must be component types")
+
+    def decorate(renderer: F) -> F:
+        setattr(renderer, _SEMANTIC_COMPONENT, component_type)
+        return renderer
+
+    return decorate
 
 
 @dataclass(frozen=True)
@@ -237,6 +252,20 @@ class Theme:
     """Root configuration for an extensible graph of design tokens."""
 
     code_styles: ClassVar[Mapping[str, CodeTokenStyle]] = MappingProxyType({})
+    _semantic_renderers: ClassVar[Mapping[type[object], Callable[..., object]]] = (
+        MappingProxyType({})
+    )
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        renderers: dict[type[object], Callable[..., object]] = {}
+        for base in reversed(cls.__mro__[1:]):
+            renderers.update(getattr(base, "_semantic_renderers", {}))
+        for value in cls.__dict__.values():
+            component_type = getattr(value, _SEMANTIC_COMPONENT, None)
+            if component_type is not None:
+                renderers[component_type] = cast(Callable[..., object], value)
+        cls._semantic_renderers = MappingProxyType(renderers)
 
     def __init__(
         self,
@@ -278,4 +307,8 @@ class Theme:
 
     def render_semantic(self, component: SemanticView, context: Context) -> View | None:
         """Optionally override a component; None selects its default composition."""
+        for component_type in type(component).__mro__:
+            renderer = self._semantic_renderers.get(component_type)
+            if renderer is not None:
+                return cast("View", renderer(self, component, context))
         return None
