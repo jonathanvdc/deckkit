@@ -387,7 +387,7 @@ override tokens for its subtree, and every downstream computed token is recomput
 against that scope:
 
 ```python
-muted = content.tokens(
+muted = content.with_tokens(
     {
         AccentColor: AccentColor.set(Color("#77808A")),
         PrimaryColor: PrimaryColor.set(Color("#4B5563")),
@@ -404,7 +404,7 @@ from dataclasses import replace
 from deckkit.units import pt
 from deckkit.views.semantic import Card
 
-compact = card.token(
+compact = card.with_token(
     Card.style_token,
     Card.style_token.derive(lambda style: replace(style, padding=pt(12))),
 )

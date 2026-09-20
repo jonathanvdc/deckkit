@@ -121,11 +121,18 @@ def check_api(compiler: Compiler) -> None:
         Text,
     )
     assert_type(
-        Text("Custom").token(CustomEnvironmentValue, CustomEnvironmentValue.set(1)),
+        Text("Custom").with_token(
+            CustomEnvironmentValue, CustomEnvironmentValue.set(1)
+        ),
         Text,
     )
-    assert_type(Text("Themed").token(custom_spacing, custom_spacing.set(pt(8))), Text)
-    Text("Invalid").token(CustomEnvironmentValue, CustomEnvironmentValue.set("wrong"))  # type: ignore[arg-type]
+    assert_type(
+        Text("Themed").with_token(custom_spacing, custom_spacing.set(pt(8))), Text
+    )
+    Text("Invalid").with_token(
+        CustomEnvironmentValue,
+        CustomEnvironmentValue.set("wrong"),  # type: ignore[arg-type]
+    )
     assert_type(
         Metric(Text("2.7×"), Text("Throughput")).animation(Animation.smooth()),
         Metric,

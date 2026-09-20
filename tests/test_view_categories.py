@@ -126,7 +126,7 @@ def test_custom_environment_modifier_reaches_subtree(compiler):
             observed.append(context.environment[density])
             return Text("Density")
 
-    compiler.compile_view(ReadsDensity().token(density, density.set(2)))
+    compiler.compile_view(ReadsDensity().with_token(density, density.set(2)))
 
     assert observed == [2]
 

@@ -119,7 +119,7 @@ def test_view_token_scope_recomputes_derived_values(compiler):
     compiler.compile_view(
         VStack(
             ReadsEmphasis(),
-            ReadsEmphasis().tokens(
+            ReadsEmphasis().with_tokens(
                 {
                     AccentColor: AccentColor.set(Color("#777777")),
                     PrimaryColor: PrimaryColor.set(Color("#333333")),
@@ -132,7 +132,7 @@ def test_view_token_scope_recomputes_derived_values(compiler):
 
 
 def test_component_style_can_be_partially_derived_in_a_subtree(compiler):
-    square_card = Card(Text("Content")).token(
+    square_card = Card(Text("Content")).with_token(
         Card.style_token,
         Card.style_token.derive(lambda style: replace(style, corner_radius=pt(0))),
     )
@@ -148,7 +148,7 @@ def test_standard_color_modifiers_use_the_active_token_scope(compiler):
     result = compiler.compile_view(
         Rectangle()
         .foreground_style(AccentColor)
-        .token(AccentColor, AccentColor.set(Color("#AA00CC")))
+        .with_token(AccentColor, AccentColor.set(Color("#AA00CC")))
     )
 
     assert result.drawable.children[0].color == "#AA00CC"

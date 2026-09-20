@@ -47,11 +47,11 @@ class View:
     def key(self, value: str | int) -> Self:
         return self._with(("key", str(value)))
 
-    def token(self, token: DesignToken[T], assignment: TokenAssignment[T]) -> Self:
+    def with_token(self, token: DesignToken[T], assignment: TokenAssignment[T]) -> Self:
         """Override one design token for this view subtree."""
-        return self.tokens({token: assignment})
+        return self.with_tokens({token: assignment})
 
-    def tokens(
+    def with_tokens(
         self, overrides: Mapping[DesignToken[Any], TokenAssignment[Any]]
     ) -> Self:
         """Create a scoped group of design-token overrides."""
@@ -60,7 +60,7 @@ class View:
         return self._with(("tokens", MappingProxyType(dict(overrides))))
 
     def font(self, style: DesignToken[Typography]) -> Self:
-        return self.token(TextStyle, TextStyle.alias(style))
+        return self.with_token(TextStyle, TextStyle.alias(style))
 
     def foreground_style(self, style: ColorStyle) -> Self:
         override = (
@@ -68,7 +68,7 @@ class View:
             if isinstance(style, DesignToken)
             else ForegroundColor.set(style)
         )
-        return self.token(ForegroundColor, override)
+        return self.with_token(ForegroundColor, override)
 
     @property
     def _layout_flex(self) -> float:
