@@ -12,6 +12,7 @@ from .code import Code, CodeHighlighter, CodeLine, CodeSpan
 from .hstack import HStack
 from .image import Image
 from .layout_view import LayoutView
+from .modifier_views import Edge, EdgeSet, FrameSpec, unbounded
 from .rectangle import Rectangle
 from .slide import Slide
 from .stack import Stack
@@ -22,10 +23,13 @@ from .zstack import ZStack
 
 __all__ = [
     "Context",
+    "Edge",
+    "EdgeSet",
     "Environment",
     "EnvironmentKey",
     "FontRoleKey",
     "ForegroundStyleKey",
+    "FrameSpec",
     "HStack",
     "Image",
     "LayoutView",
@@ -40,6 +44,7 @@ __all__ = [
     "VStack",
     "View",
     "ZStack",
+    "unbounded",
 ]
 
 from .composite_view import CompositeView

@@ -21,12 +21,15 @@ def test_typed_content_and_allocated_bounds(compiler):
         )
     ).drawable
     assert isinstance(root, DrawableGroup)
-    text, rectangle = root.children[0].children
+    padded, framed = root.children[0].children
+    text = padded.children[0]
+    rectangle = framed.children[0]
     assert isinstance(text, DrawableText)
     assert isinstance(rectangle, DrawableRectangle)
     assert text.text == "Typed"
-    assert text.content_bounds.x == text.bounds.x + pt(8)
-    assert text.bounds.width == text.content_bounds.width + pt(16)
+    assert text.content_bounds == text.bounds
+    assert padded.bounds.width == text.bounds.width + pt(16)
+    assert text.bounds.x == padded.bounds.x + pt(8)
     assert text.metrics.lines == ("Typed",)
     for node in root.walk():
         assert not hasattr(node, "kind")

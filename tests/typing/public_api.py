@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Optional
 
 from typing_extensions import assert_type
 
@@ -15,12 +15,12 @@ from deckkit.drawables import Drawable
 from deckkit.geometry import RelativePoint
 from deckkit.identity import ViewIdentity
 from deckkit.layout import (
-    Constraints,
     Layout,
     LayoutChild,
     LayoutContext,
     LayoutPlan,
     Placement,
+    ProposedSize,
 )
 from deckkit.themes import CodeTokenStyle, Theme
 from deckkit.units import Length, cm, inch, pt
@@ -34,13 +34,13 @@ from deckkit.views import (
     EnvironmentKey,
     HStack,
     LayoutView,
+    PygmentsHighlighter,
     Rectangle,
     Slide,
     Text,
     TextLine,
     TextSpan,
     View,
-    PygmentsHighlighter,
 )
 from deckkit.views.semantic import (
     Card,
@@ -55,7 +55,7 @@ from deckkit.views.semantic import (
 class CustomLayout:
     def measure(
         self,
-        constraints: Constraints,
+        constraints: ProposedSize,
         children: Sequence[LayoutChild],
         context: LayoutContext,
     ) -> LayoutPlan:
@@ -99,7 +99,7 @@ class CustomSlide(Slide):
 def check_api(compiler: Compiler) -> None:
     assert_type(compiler.environment.get(CustomEnvironmentKey), int)
     text = Text("Hello").font("title").padding().frame(width=pt(100)).key("title")
-    assert_type(text, Text)
+    assert_type(text, View)
     assert_type(Text("    code", flow="verbatim"), Text)
     assert_type(
         Text(
@@ -146,9 +146,9 @@ def check_api(compiler: Compiler) -> None:
     )
     assert_type(
         Pipeline(PipelineStage(Text("Parse"))).padding(pt(4)),
-        Pipeline,
+        View,
     )
-    assert_type(CustomView().padding(), CustomView)
+    assert_type(CustomView().padding(), View)
     assert_type(
         Annotated(
             Rectangle().key("box"),
@@ -178,7 +178,7 @@ def check_lengths() -> None:
     assert_type(pt(12) * 2, Length)
     assert_type(pt(12) / 2, Length)
     assert_type(inch(1) / pt(12), float)
-    assert_type(Constraints(inch(1), cm(2.54)).max_width, Length)
+    assert_type(ProposedSize(inch(1), cm(2.54)).width, Optional[Length])
     # These expected failures guard against accidentally widening the API.
     Text("Bare floats are invalid").padding(16)  # type: ignore[arg-type]
     pt(12) + 3  # type: ignore[operator]

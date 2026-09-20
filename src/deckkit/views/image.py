@@ -35,7 +35,7 @@ class Image(PrimitiveView):
             mime = PILImage.MIME[image.format or ""]
         return ExpandedImage(
             metadata,
-            ImageLayout(inch(width / self.dpi), inch(height / self.dpi)),
+            ImageLayout(inch(width / self.dpi), inch(height / self.dpi), self.fit),
             data,
             mime,
             (width, height),

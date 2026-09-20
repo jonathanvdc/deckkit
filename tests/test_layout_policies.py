@@ -6,20 +6,31 @@ from typing import Callable
 import pytest
 
 from deckkit.backends import pptx, svg
+from deckkit.geometry import RelativePoint
 from deckkit.identity import ViewIdentity
 from deckkit.layout import (
-    Constraints,
     Layout,
     LayoutContext,
     LayoutEngine,
     LayoutOverflow,
     LayoutPlan,
     Placement,
+    ProposedSize,
 )
 from deckkit.layouts import StackLayout
 from deckkit.units import Length, pt
 from deckkit.view_expansion import expand_view
-from deckkit.views import Context, LayoutView, Rectangle, State, Text, View
+from deckkit.views import (
+    Context,
+    EdgeSet,
+    HStack,
+    LayoutView,
+    Rectangle,
+    State,
+    Text,
+    View,
+    unbounded,
+)
 
 
 @dataclass(frozen=True, init=False)
@@ -46,14 +57,16 @@ class DiagonalLayout:
         for i, child in enumerate(children):
             offset = i * self.inset
             plan = child.measure(
-                Constraints(
-                    constraints.max_width - offset, constraints.max_height - offset
+                ProposedSize(
+                    None if constraints.width is None else constraints.width - offset,
+                    None if constraints.height is None else constraints.height - offset,
                 )
             )
             # Identical proposals return the already measured plan.
             assert plan is child.measure(
-                Constraints(
-                    constraints.max_width - offset, constraints.max_height - offset
+                ProposedSize(
+                    None if constraints.width is None else constraints.width - offset,
+                    None if constraints.height is None else constraints.height - offset,
                 )
             )
             placements.append(Placement(child, plan, offset, offset))
@@ -71,7 +84,8 @@ def test_custom_layout_through_both_backends(compiler, tmp_path):
         Text("Custom layout").key("label"),
     ).padding(pt(10))
     result = compiler.compile_view(view)
-    first, second = result.drawable.children[0].children
+    container = result.drawable.children[0].children[0]
+    first, second = container.children
     assert (first.bounds.x, first.bounds.y) == (pt(10), pt(10))
     assert (second.bounds.x, second.bounds.y) == (pt(22), pt(22))
     assert "Custom layout" in svg.render(result.drawable)
@@ -118,6 +132,17 @@ def test_vertical_flex_allocation(compiler):
     )
 
 
+def test_flex_applied_after_structural_modifier_allocates_the_wrapper(compiler):
+    layout = compiler.compile_view(
+        HStack(
+            Rectangle().frame(width=pt(20), height=pt(20)),
+            Rectangle().frame(height=pt(20)).padding(pt(5)).flex(),
+        )
+    ).drawable.children[0]
+
+    assert layout.children[1].bounds.width == pt(924)
+
+
 def test_bad_custom_placement_is_diagnosed(compiler):
     class BadLayout:
         def measure(self, c, children, context):
@@ -136,4 +161,37 @@ def test_modifier_overflow_has_component_identity(compiler):
         compiler.compile_view(
             Text("No space").key("title").frame(width=pt(1)).padding(pt(5))
         )
-    assert "key:title:" in error.value.identity
+    assert error.value.identity.endswith("deckkit.views.modifier_views.Frame")
+
+
+def test_flexible_frame_fills_parent_and_aligns_intrinsic_child(compiler):
+    layout = compiler.compile_view(
+        Text("short").frame(max_width=unbounded, alignment=RelativePoint.left)
+    ).drawable.children[0]
+    text = layout.children[0]
+
+    assert layout.bounds.width == pt(960)
+    assert text.bounds.width < layout.bounds.width
+    assert text.bounds.x == layout.bounds.x
+
+
+def test_ideal_frame_dimension_is_used_for_unspecified_proposal(compiler):
+    layout = (
+        compiler.compile_view(HStack(Text("short").frame(ideal_width=pt(200))))
+        .drawable.children[0]
+        .children[0]
+    )
+
+    assert layout.bounds.width == pt(200)
+    assert layout.children[0].bounds.width < layout.bounds.width
+
+
+def test_edge_padding_is_structural(compiler):
+    layout = compiler.compile_view(
+        Text("short").padding(pt(10), edges=EdgeSet.horizontal)
+    ).drawable.children[0]
+    text = layout.children[0]
+
+    assert layout.bounds.width == text.bounds.width + pt(20)
+    assert layout.bounds.height == text.bounds.height
+    assert text.bounds.x == layout.bounds.x + pt(10)

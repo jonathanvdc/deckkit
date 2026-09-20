@@ -10,7 +10,7 @@ from deckkit.fonts import (
     FileFontResolver,
     Font,
 )
-from deckkit.layout import Constraints, LayoutPlan
+from deckkit.layout import LayoutPlan, ProposedSize
 from deckkit.units import cm, inch, pt
 from deckkit.views import HStack, Image, Rectangle, Text
 
@@ -38,7 +38,7 @@ def test_conversion_and_dimensional_arithmetic():
         lambda: Text("No implicit points").padding(16),
         lambda: Text("No implicit points").frame(width=100),
         lambda: HStack(spacing=12),
-        lambda: Constraints(100, pt(100)),
+        lambda: ProposedSize(100, pt(100)),
         lambda: LayoutPlan(100, pt(100)),
         lambda: Bounds(0, pt(0), pt(10), pt(10)),
     ],

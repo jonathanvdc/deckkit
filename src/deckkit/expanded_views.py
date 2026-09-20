@@ -43,6 +43,7 @@ class ExpandedMetadata:
     animation: Animation | None = field(metadata={"tracked": True})
     transition: Transition | None = field(metadata={"tracked": True})
     animation_boundary: bool = field(metadata={"tracked": True})
+    flex: float = 0.0
 
 
 @dataclass(frozen=True)

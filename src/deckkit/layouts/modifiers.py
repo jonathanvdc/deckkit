@@ -1,77 +1,134 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 
 from ..layout import (
-    Constraints,
-    Layout,
     LayoutChild,
     LayoutContext,
     LayoutOverflow,
     LayoutPlan,
-    checked,
+    Placement,
+    ProposedSize,
 )
-from ..units import Length, pt, require_length
+from ..units import Length, pt
+from ..views.modifier_views import Edge, EdgeSet, FrameMaximum, FrameSpec, unbounded
+
+
+def _subtract(value: Length | None, amount: Length) -> Length | None:
+    return None if value is None else max(pt(0), value - amount)
 
 
 @dataclass(frozen=True)
 class PaddingLayout:
-    inner: Layout
     amount: Length
-
-    def __post_init__(self) -> None:
-        require_length(self.amount)
-        if self.amount < pt(0):
-            raise ValueError("Padding must be finite and nonnegative")
+    edges: EdgeSet
 
     def measure(
-        self, c: Constraints, children: Sequence[LayoutChild], context: LayoutContext
+        self,
+        proposal: ProposedSize,
+        children: Sequence[LayoutChild],
+        context: LayoutContext,
     ) -> LayoutPlan:
-        pad = self.amount
-        if 2 * pad > min(c.max_width, c.max_height):
-            raise LayoutOverflow(None, (c.max_width, c.max_height), (2 * pad, 2 * pad))
-        proposal = Constraints(
-            c.max_width - 2 * pad,
-            c.max_height - 2 * pad,
-            max(pt(0), c.min_width - 2 * pad),
-            max(pt(0), c.min_height - 2 * pad),
+        (child,) = children
+        left = self.amount if Edge.leading in self.edges.values else pt(0)
+        right = self.amount if Edge.trailing in self.edges.values else pt(0)
+        top = self.amount if Edge.top in self.edges.values else pt(0)
+        bottom = self.amount if Edge.bottom in self.edges.values else pt(0)
+        horizontal, vertical = left + right, top + bottom
+        plan = child.measure(
+            ProposedSize(
+                _subtract(proposal.width, horizontal),
+                _subtract(proposal.height, vertical),
+            )
         )
-        plan = checked(self.inner.measure(proposal, children, context), proposal, None)
-        dx, dy = plan.properties.get("content_offset", (pt(0), pt(0)))
         return LayoutPlan(
-            plan.width + 2 * pad,
-            plan.height + 2 * pad,
-            tuple(replace(p, x=p.x + pad, y=p.y + pad) for p in plan.placements),
-            dict(plan.properties, content_offset=(dx + pad, dy + pad)),
+            plan.width + horizontal,
+            plan.height + vertical,
+            (Placement(child, plan, left, top),),
+            {"content_offset": (left, top), "content_size": (plan.width, plan.height)},
         )
+
+
+def _clamp(
+    value: Length, minimum: Length | None, maximum: FrameMaximum | None
+) -> Length:
+    if minimum is not None:
+        value = max(value, minimum)
+    if isinstance(maximum, Length):
+        value = min(value, maximum)
+    return value
+
+
+def _child_dimension(
+    proposed: Length | None,
+    exact: Length | None,
+    minimum: Length | None,
+    ideal: Length | None,
+    maximum: FrameMaximum | None,
+) -> Length | None:
+    if exact is not None:
+        return exact
+    value = ideal if proposed is None and ideal is not None else proposed
+    return None if value is None else _clamp(value, minimum, maximum)
+
+
+def _frame_dimension(
+    proposed: Length | None,
+    child: Length,
+    exact: Length | None,
+    minimum: Length | None,
+    ideal: Length | None,
+    maximum: FrameMaximum | None,
+) -> Length:
+    if exact is not None:
+        return exact
+    if maximum is unbounded and proposed is not None:
+        return max(proposed, minimum or pt(0))
+    if proposed is None and ideal is not None:
+        return _clamp(ideal, minimum, maximum)
+    return _clamp(child, minimum, maximum)
 
 
 @dataclass(frozen=True)
 class FrameLayout:
-    inner: Layout
-    width: Length | None = None
-    height: Length | None = None
-
-    def __post_init__(self) -> None:
-        for dimension in (self.width, self.height):
-            if dimension is not None:
-                require_length(dimension)
-            if dimension is not None and dimension < pt(0):
-                raise ValueError("Frame dimensions must be finite and nonnegative")
+    spec: FrameSpec
 
     def measure(
-        self, c: Constraints, children: Sequence[LayoutChild], context: LayoutContext
+        self,
+        proposal: ProposedSize,
+        children: Sequence[LayoutChild],
+        context: LayoutContext,
     ) -> LayoutPlan:
-        width, height = self.width, self.height
-        if (width is not None and width > c.max_width) or (
-            height is not None and height > c.max_height
-        ):
-            raise LayoutOverflow(None, (c.max_width, c.max_height), (width, height))
-        proposal = Constraints(
-            width if width is not None else c.max_width,
-            height if height is not None else c.max_height,
-            width if width is not None else c.min_width,
-            height if height is not None else c.min_height,
+        (child,) = children
+        s = self.spec
+        child_proposal = ProposedSize(
+            _child_dimension(
+                proposal.width, s.width, s.min_width, s.ideal_width, s.max_width
+            ),
+            _child_dimension(
+                proposal.height, s.height, s.min_height, s.ideal_height, s.max_height
+            ),
         )
-        return checked(self.inner.measure(proposal, children, context), proposal, None)
+        plan = child.measure(child_proposal)
+        width = _frame_dimension(
+            proposal.width, plan.width, s.width, s.min_width, s.ideal_width, s.max_width
+        )
+        height = _frame_dimension(
+            proposal.height,
+            plan.height,
+            s.height,
+            s.min_height,
+            s.ideal_height,
+            s.max_height,
+        )
+        if plan.width > width + pt(1e-6) or plan.height > height + pt(1e-6):
+            raise LayoutOverflow(None, (width, height), (plan.width, plan.height))
+        x = (width - plan.width) * s.alignment.x
+        y = (height - plan.height) * s.alignment.y
+        return LayoutPlan(
+            width,
+            height,
+            (Placement(child, plan, x, y),),
+            {"content_offset": (x, y), "content_size": (plan.width, plan.height)},
+        )

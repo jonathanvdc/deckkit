@@ -12,7 +12,7 @@ from .expanded_views import (
     ExpandedView,
 )
 from .identity import KeyScope, ScopedKey, ViewIdentity
-from .layouts import FrameLayout, PaddingLayout, PassthroughLayout
+from .layouts import PassthroughLayout
 from .views import (
     CompositeView,
     Context,
@@ -69,6 +69,7 @@ def expand_view(
             animation,
             transition,
             boundary,
+            value._layout_flex,
         )
         expanded: ExpandedView
         if isinstance(value, PrimitiveView):
@@ -123,15 +124,6 @@ def expand_view(
             raise TypeError(
                 f"Unsupported view type: {typename}; inherit CompositeView for body-based composition or LayoutView for custom layout"
             )
-        for modifier in value._modifiers:
-            if modifier[0] == "padding":
-                expanded = replace(
-                    expanded, layout=PaddingLayout(expanded.layout, modifier[1])
-                )
-            elif modifier[0] == "frame":
-                expanded = replace(
-                    expanded, layout=FrameLayout(expanded.layout, *modifier[1])
-                )
         return expanded
 
     root = ViewIdentity.root("slide")

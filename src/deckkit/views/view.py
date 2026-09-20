@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 from copy import copy
-from typing import Any, Literal, Optional, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Literal, TypeVar, Union
 
 from typing_extensions import Self
 
 from ..animation import Animation, Transition
 from ..context import EnvironmentKey, FontRoleKey, ForegroundStyleKey
-from ..units import Length, pt, require_length
+from ..units import Length, pt
+
+if TYPE_CHECKING:
+    from ..geometry import RelativePoint
+    from .modifier_views import EdgeSet, FrameMaximum
 
 T = TypeVar("T")
 
@@ -19,9 +23,7 @@ Modifier = Union[
     tuple[Literal["animation"], Animation],
     tuple[Literal["transition"], Transition],
     tuple[Literal["environment"], tuple[type[EnvironmentKey[Any]], Any]],
-    tuple[Literal["padding"], Length],
     tuple[Literal["flex"], float],
-    tuple[Literal["frame"], tuple[Optional[Length], Optional[Length]]],
     tuple[Literal["boundary"], bool],
 ]
 
@@ -46,17 +48,45 @@ class View:
     def foreground_style(self, style: str) -> Self:
         return self.environment(ForegroundStyleKey, style)
 
-    def padding(self, amount: Length = pt(16)) -> Self:
-        require_length(amount)
-        return self._with(("padding", amount))
+    @property
+    def _layout_flex(self) -> float:
+        return next((m[1] for m in reversed(self._modifiers) if m[0] == "flex"), 0.0)
+
+    def padding(self, amount: Length = pt(16), *, edges: EdgeSet | None = None) -> View:
+        from .modifier_views import EdgeSet, Padding
+
+        return Padding(self, amount, EdgeSet.all if edges is None else edges)
 
     def frame(
-        self, *, width: Length | None = None, height: Length | None = None
-    ) -> Self:
-        for value in (width, height):
-            if value is not None:
-                require_length(value)
-        return self._with(("frame", (width, height)))
+        self,
+        *,
+        width: Length | None = None,
+        height: Length | None = None,
+        min_width: Length | None = None,
+        ideal_width: Length | None = None,
+        max_width: FrameMaximum | None = None,
+        min_height: Length | None = None,
+        ideal_height: Length | None = None,
+        max_height: FrameMaximum | None = None,
+        alignment: RelativePoint | None = None,
+    ) -> View:
+        from ..geometry import RelativePoint
+        from .modifier_views import Frame, FrameSpec
+
+        return Frame(
+            self,
+            FrameSpec(
+                width,
+                height,
+                min_width,
+                ideal_width,
+                max_width,
+                min_height,
+                ideal_height,
+                max_height,
+                RelativePoint.center if alignment is None else alignment,
+            ),
+        )
 
     def flex(self, weight: float = 1) -> Self:
         if weight <= 0:

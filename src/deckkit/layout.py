@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Protocol, cast
 
@@ -24,20 +24,18 @@ from .drawables import (
 
 
 @dataclass(frozen=True)
-class Constraints:
-    max_width: Length
-    max_height: Length
-    min_width: Length = pt(0)
-    min_height: Length = pt(0)
+class ProposedSize:
+    """A parent's suggested size; ``None`` requests the child's ideal size."""
+
+    width: Length | None = None
+    height: Length | None = None
 
     def __post_init__(self) -> None:
-        for value in (self.max_width, self.max_height, self.min_width, self.min_height):
-            require_length(value)
-        if not (
-            pt(0) <= self.min_width <= self.max_width
-            and pt(0) <= self.min_height <= self.max_height
-        ):
-            raise ValueError("Constraints must be nonnegative and ordered")
+        for value in (self.width, self.height):
+            if value is not None:
+                require_length(value)
+                if value < pt(0):
+                    raise ValueError("Proposed dimensions must be nonnegative")
 
 
 @dataclass(frozen=True)
@@ -69,7 +67,7 @@ class LayoutChild(Protocol):
     view_identity: ViewIdentity
     flex: float
 
-    def measure(self, constraints: Constraints) -> LayoutPlan: ...
+    def measure(self, proposal: ProposedSize) -> LayoutPlan: ...
 
 
 @dataclass(frozen=True)
@@ -102,28 +100,20 @@ class Layout(Protocol):
 
     def measure(
         self,
-        constraints: Constraints,
+        proposal: ProposedSize,
         children: Sequence[LayoutChild],
         context: LayoutContext,
     ) -> LayoutPlan: ...
 
 
-def checked(plan: LayoutPlan, c: Constraints, identity: str | None) -> LayoutPlan:
+def checked(plan: LayoutPlan, identity: str | None) -> LayoutPlan:
     for value in (plan.width, plan.height):
         require_length(value)
     if not all(v >= pt(0) for v in (plan.width, plan.height)):
         raise ValueError(
             f"Invalid layout size at {identity}: {(plan.width, plan.height)}"
         )
-    if plan.width > c.max_width + pt(1e-6) or plan.height > c.max_height + pt(1e-6):
-        raise LayoutOverflow(
-            identity, (c.max_width, c.max_height), (plan.width, plan.height)
-        )
-    return replace(
-        plan,
-        width=max(plan.width, c.min_width),
-        height=max(plan.height, c.min_height),
-    )
+    return plan
 
 
 class _Child:
@@ -132,24 +122,15 @@ class _Child:
         self.context = context
         self.identity = node.identity
         self.view_identity = node.view_identity
-        self.flex = next(
-            (
-                modifier[1]
-                for modifier in reversed(node.modifiers)
-                if modifier[0] == "flex"
-            ),
-            0.0,
-        )
+        self.flex = node.metadata.flex
         self.children = tuple(_Child(child, context) for child in node.children)
-        self._cache: dict[Constraints, LayoutPlan] = {}
+        self._cache: dict[ProposedSize, LayoutPlan] = {}
 
-    def measure(self, constraints: Constraints) -> LayoutPlan:
-        if constraints not in self._cache:
+    def measure(self, proposal: ProposedSize) -> LayoutPlan:
+        if proposal not in self._cache:
             try:
-                plan = self.node.layout.measure(
-                    constraints, self.children, self.context
-                )
-                plan = checked(plan, constraints, self.identity)
+                plan = self.node.layout.measure(proposal, self.children, self.context)
+                plan = checked(plan, self.identity)
                 for placement in plan.placements:
                     if not any(placement.child is child for child in self.children):
                         raise ValueError(
@@ -167,14 +148,14 @@ class _Child:
                         raise LayoutOverflow(
                             self.identity, (plan.width, plan.height), required
                         )
-                self._cache[constraints] = plan
+                self._cache[proposal] = plan
             except LayoutOverflow as error:
                 if error.identity is not None:
                     raise
                 raise LayoutOverflow(
                     self.identity, error.available, error.required
                 ) from error
-        return self._cache[constraints]
+        return self._cache[proposal]
 
     def place(self, plan: LayoutPlan, x: Length = pt(0), y: Length = pt(0)) -> Drawable:
         bounds = Bounds(x, y, plan.width, plan.height)
@@ -207,9 +188,9 @@ class LayoutEngine:
     def __init__(self, context: LayoutContext) -> None:
         self.context = context
 
-    def measure(self, node: ExpandedView, constraints: Constraints) -> Drawable:
+    def measure(self, node: ExpandedView, proposal: ProposedSize) -> Drawable:
         child = _Child(node, self.context)
-        return child.place(child.measure(constraints))
+        return child.place(child.measure(proposal))
 
     def layout_view(
         self, node: ExpandedView, width: Length = pt(960), height: Length = pt(540)
@@ -220,5 +201,5 @@ class LayoutEngine:
             "canvas",
             Bounds(pt(0), pt(0), width, height),
             DrawableMetadata(),
-            (self.measure(node, Constraints(width, height)),),
+            (self.measure(node, ProposedSize(width, height)),),
         )

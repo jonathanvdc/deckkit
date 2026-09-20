@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from ...context import Context
 from ...geometry import RelativePoint
 from ...units import pt
+from ..modifier_views import unbounded
 from ..rectangle import Rectangle
 from ..view import View
 from ..zstack import ZStack
@@ -28,6 +29,8 @@ class Card(SemanticView):
     def default_body(self, context: Context) -> View:
         return ZStack(
             Rectangle(corner_radius=pt(12)).foreground_style(self.background_style),
-            self.content.foreground_style(self.content_style).padding(pt(20)),
+            self.content.foreground_style(self.content_style)
+            .frame(max_width=unbounded, alignment=RelativePoint.top_left)
+            .padding(pt(20)),
             alignment=RelativePoint.top_left,
         )

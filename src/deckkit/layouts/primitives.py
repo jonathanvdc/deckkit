@@ -3,9 +3,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from ..layout import Constraints, LayoutChild, LayoutContext, LayoutPlan
+from ..layout import LayoutChild, LayoutContext, LayoutPlan, ProposedSize
 from ..measurement import StyledTextLine, TextFlow, layout_styled_text
-from ..units import Length
+from ..units import Length, pt
 from ._content import content
 
 
@@ -15,41 +15,61 @@ class TextLayout:
     flow: TextFlow = "wrapped"
 
     def measure(
-        self, c: Constraints, children: Sequence[LayoutChild], context: LayoutContext
+        self,
+        proposal: ProposedSize,
+        children: Sequence[LayoutChild],
+        context: LayoutContext,
     ) -> LayoutPlan:
         measured_text = layout_styled_text(
             context.measurer,
             context.font_resolver,
             self.styled_lines,
-            c.max_width,
+            proposal.width if proposal.width is not None else pt(1_000_000_000),
             self.flow,
         )
         return content(
             measured_text.width,
             measured_text.height,
             measured_text=measured_text,
-            line_width=max(measured_text.width, c.min_width),
+            line_width=measured_text.width,
         )
 
 
 @dataclass(frozen=True)
 class ShapeLayout:
     def measure(
-        self, c: Constraints, children: Sequence[LayoutChild], context: LayoutContext
+        self,
+        proposal: ProposedSize,
+        children: Sequence[LayoutChild],
+        context: LayoutContext,
     ) -> LayoutPlan:
-        return content(c.min_width, c.min_height)
+        return content(proposal.width or pt(0), proposal.height or pt(0))
 
 
 @dataclass(frozen=True)
 class ImageLayout:
     width: Length
     height: Length
+    fit: str = "contain"
 
     def measure(
-        self, c: Constraints, children: Sequence[LayoutChild], context: LayoutContext
+        self,
+        proposal: ProposedSize,
+        children: Sequence[LayoutChild],
+        context: LayoutContext,
     ) -> LayoutPlan:
-        scale = min(c.max_width / self.width, c.max_height / self.height, 1)
+        if (
+            self.fit == "cover"
+            and proposal.width is not None
+            and proposal.height is not None
+        ):
+            return content(proposal.width, proposal.height)
+        width_scale = proposal.width / self.width if proposal.width is not None else 1
+        height_scale = (
+            proposal.height / self.height if proposal.height is not None else 1
+        )
+        scale = min(width_scale, height_scale, 1)
         return content(
-            max(c.min_width, self.width * scale),
-            max(c.min_height, self.height * scale),
+            self.width * scale,
+            self.height * scale,
         )

@@ -143,7 +143,7 @@ def test_structured_text_materializes_styled_runs_and_backgrounds(compiler, tmp_
             flow="verbatim",
         ).frame(width=pt(240))
     )
-    group = compiled.drawable.children[0]
+    group = compiled.drawable.children[0].children[0]
     assert isinstance(group, DrawableRichText)
     runs = [node for node in group.children if isinstance(node, DrawableText)]
     backgrounds = [
@@ -156,7 +156,7 @@ def test_structured_text_materializes_styled_runs_and_backgrounds(compiler, tmp_
         "#E8EEF5",
         "#FFF2A8",
     ]
-    assert backgrounds[0].bounds.width == pt(240)
+    assert backgrounds[0].bounds.width == group.content_bounds.width
     assert backgrounds[1].bounds.x == runs[1].bounds.x
     assert backgrounds[1].bounds.width == runs[1].bounds.width
 
@@ -197,7 +197,7 @@ def test_structured_text_wraps_across_span_boundaries(compiler):
             )
         ).frame(width=pt(70))
     )
-    group = compiled.drawable.children[0]
+    group = compiled.drawable.children[0].children[0]
     assert isinstance(group, DrawableRichText)
     runs = [node for node in group.children if isinstance(node, DrawableText)]
     backgrounds = [
@@ -207,7 +207,10 @@ def test_structured_text_wraps_across_span_boundaries(compiler):
     assert "".join(run.text for run in runs).replace(" ", "") == "alphabetagamma"
     assert len({run.bounds.y for run in runs}) > 1
     assert len(backgrounds) > 1
-    assert all(background.bounds.width == pt(70) for background in backgrounds)
+    assert all(
+        background.bounds.width == group.content_bounds.width
+        for background in backgrounds
+    )
 
 
 def test_editorial_is_an_example_subclass(font):

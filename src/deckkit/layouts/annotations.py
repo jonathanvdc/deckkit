@@ -8,11 +8,11 @@ from ..drawables import Bounds
 from ..geometry import Point, RelativePoint
 from ..identity import ViewIdentity
 from ..layout import (
-    Constraints,
     LayoutChild,
     LayoutContext,
     LayoutPlan,
     Placement,
+    ProposedSize,
 )
 from ..units import Length, pt
 from ._content import content
@@ -62,7 +62,7 @@ class ResolvedConnector(ResolvedAnnotation):
         x, y = min(start.x, end.x), min(start.y, end.y)
         width = max(start.x, end.x) - x
         height = max(start.y, end.y) - y
-        plan = child.measure(Constraints(width, height, width, height))
+        plan = child.measure(ProposedSize(width, height))
         plan = replace(
             plan,
             properties=dict(
@@ -90,7 +90,7 @@ class ResolvedLabel(ResolvedAnnotation):
         container: Bounds,
     ) -> Placement:
         target = _point(self.anchor, bounds)
-        plan = child.measure(Constraints(container.width, container.height))
+        plan = child.measure(ProposedSize(container.width, container.height))
         x = target.x - plan.width * self.alignment.x
         y = target.y - plan.height * self.alignment.y
         return Placement(child, plan, x, y)
@@ -132,12 +132,15 @@ class AnnotatedLayout:
     annotations: tuple[ResolvedAnnotation, ...]
 
     def measure(
-        self, c: Constraints, children: Sequence[LayoutChild], context: LayoutContext
+        self,
+        proposal: ProposedSize,
+        children: Sequence[LayoutChild],
+        context: LayoutContext,
     ) -> LayoutPlan:
         content_child, *annotation_children = children
         if len(annotation_children) != len(self.annotations):
             raise ValueError("Annotated child and annotation counts differ")
-        main = content_child.measure(c)
+        main = content_child.measure(proposal)
         bounds: dict[ViewIdentity, Bounds] = {}
         _collect_bounds(content_child, main, pt(0), pt(0), bounds)
         container = Bounds(pt(0), pt(0), main.width, main.height)
@@ -195,6 +198,9 @@ class AnnotatedLayout:
 @dataclass(frozen=True)
 class ConnectorLayout:
     def measure(
-        self, c: Constraints, children: Sequence[LayoutChild], context: LayoutContext
+        self,
+        proposal: ProposedSize,
+        children: Sequence[LayoutChild],
+        context: LayoutContext,
     ) -> LayoutPlan:
-        return content(c.min_width, c.min_height)
+        return content(proposal.width or pt(0), proposal.height or pt(0))

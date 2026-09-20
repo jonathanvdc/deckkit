@@ -5,12 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ...context import Context
-from ...geometry import RelativePoint
-from ...units import pt
 from ..code import Code
-from ..rectangle import Rectangle
 from ..view import View
-from ..zstack import ZStack
 from .card import Card
 from .semantic_view import SemanticView
 

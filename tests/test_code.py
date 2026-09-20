@@ -5,6 +5,7 @@ import pytest
 from deckkit.expanded_views import ExpandedText
 from deckkit.theme import CodeTokenStyle
 from deckkit.themes import ClarityTheme
+from deckkit.units import pt
 from deckkit.views import Code, CodeLine, CodeSpan, PygmentsHighlighter
 from deckkit.views.semantic import CodeBlock
 
@@ -58,6 +59,25 @@ def test_code_block_adds_themed_container(compiler):
     ]
     assert len(rectangles) == 1
     assert rectangles[0].color == "#E8EEF5"
+
+
+def test_code_block_fills_card_without_knowing_its_inner_width(compiler):
+    from deckkit.drawables import DrawableGroup, DrawableRectangle
+
+    compiled = compiler.compile_view(CodeBlock(Code("value")).frame(width=pt(300)))
+    rectangle = next(
+        node for node in compiled.drawable.walk() if isinstance(node, DrawableRectangle)
+    )
+    content_frame = next(
+        node
+        for node in compiled.drawable.walk()
+        if isinstance(node, DrawableGroup)
+        and node.identity.endswith("deckkit.views.modifier_views.Frame")
+        and node.bounds.width == pt(260)
+    )
+
+    assert rectangle.bounds.width == pt(300)
+    assert content_frame.bounds.x == rectangle.bounds.x + pt(20)
 
 
 def test_pygments_highlighting_produces_manual_code_model():

@@ -139,9 +139,34 @@ returns a dimensionless ratio. There is no implicit conversion to float; `.point
 is the explicit conversion for measurement/export integrations. Nonfinite lengths
 are rejected; flexible allocation remains a separate layout concept.
 
-Constraints, placement plans, scene bounds, font sizes and measured text metrics all
-retain `Length`. Flex weights and line-spacing multipliers remain floats. Custom
-layout policies use `pt(0)` for a zero distance and `pt(...)` for tolerances.
+Concrete proposals, placement plans, scene bounds, font sizes and measured text
+metrics all retain `Length`. Flex weights and line-spacing multipliers remain floats.
+Custom layout policies receive `ProposedSize`; either dimension can be `None` to ask
+for the child's ideal size.
+
+Frames and padding are structural views, so modifier order is visible in layout:
+
+```python
+from deckkit.geometry import RelativePoint
+from deckkit.views import EdgeSet, Text, unbounded
+
+title = (
+    Text("Compiler performance")
+    .frame(
+        min_width=pt(240),
+        ideal_width=pt(480),
+        max_width=unbounded,
+        alignment=RelativePoint.left,
+    )
+    .padding(pt(16), edges=EdgeSet.horizontal)
+)
+```
+
+Exact `width` and `height` values create fixed frames. Flexible frames accept minimum,
+ideal and maximum dimensions; `unbounded` consumes a concrete size proposed by the
+parent and falls back to the ideal child size for an unspecified proposal. Because
+frame and padding return wrapper views, their result type is `View`, and reversing
+their order changes which wrapper is outermost.
 
 Images use 96 DPI for intrinsic physical size by default. `Image(path, dpi=192)`
 explicitly changes that conversion; embedded DPI metadata is ignored to keep layout
