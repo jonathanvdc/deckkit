@@ -206,7 +206,6 @@ status = Pill(Text("READY"))
 summary = Card(VStack(Text("Heading"), Text("Supporting content")))
 
 comparison = BeforeAfter(
-    title=Text("A simpler pipeline"),
     before=PipelineStage(HStack(Text("Parse"), Text("Lower"))),
     after=PipelineStage(Text("Parse")),
     takeaway=Metric(Text("3"), Text("Passes removed")),
@@ -219,7 +218,7 @@ the component's authored `body(context)`. Themes can override built-in or
 application-defined semantic types through this single hook. Recipes remain ordinary
 view composition.
 `Metric.value`, `Metric.label`, `Pill.content`, `Card.content`, `PipelineStage.label`, and every
-`BeforeAfter` content slot require views; wrap strings in `Text(...)`. A `Pill` can
+`BeforeAfter` content slot requires views; wrap strings in `Text(...)`. A `Pill` can
 therefore contain text or richer composed content. Style tokens such as
 `PipelineStage.emphasis` remain strings. Explicit child styles override inherited
 recipe styles.
@@ -390,6 +389,10 @@ inherits from Clarity. Applications can subclass it to change the design or impl
 
 `Deck` is an immutable sequence of `Slide` instances, constructed from an iterable.
 It supports iteration, indexing and slicing (which returns another deck).
+Common semantic slide structures live in `deckkit.views.slides`. For example,
+`TitleAndContentSlide` asks subclasses for a `title` view and state-dependent
+`content(context)`. It composes separate `SlideMargins` and `TitleAndContent`
+semantic views so themes can override margins and title layout independently.
 
 ```python
 from deckkit import Deck

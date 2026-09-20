@@ -11,7 +11,6 @@ from deckkit.views import (
     CompositeView,
     HStack,
     Rectangle,
-    Slide,
     Text,
     VStack,
     ZStack,
@@ -23,36 +22,43 @@ from deckkit.views.semantic import (
     Pipeline,
     PipelineStage,
 )
+from deckkit.views.slides import TitleAndContentSlide
 
 
-class MetricsSlide(Slide):
-    def body(self, context):
-        return VStack(
-            Text("Compiler performance").font("title"),
-            HStack(
-                Metric(Text("2.7×"), Text("Throughput")),
-                Metric(Text("−38%"), Text("Compile time")),
-                Metric(Text("−22%"), Text("Memory")),
-                spacing=pt(32),
-            ),
-            spacing=pt(36),
-        ).padding(pt(40))
+class MetricsSlide(TitleAndContentSlide):
+    @property
+    def title(self):
+        return Text("Compiler performance")
+
+    def content(self, context):
+        return HStack(
+            Metric(Text("2.7×"), Text("Throughput")),
+            Metric(Text("−38%"), Text("Compile time")),
+            Metric(Text("−22%"), Text("Memory")),
+            spacing=pt(32),
+        )
 
 
-class ComparisonSlide(Slide):
-    def body(self, context):
+class ComparisonSlide(TitleAndContentSlide):
+    @property
+    def title(self):
+        return Text("A simpler lowering pipeline")
+
+    def content(self, context):
         return BeforeAfter(
-            Text("A simpler lowering pipeline"),
             Text("Parse · Lower · Optimize"),
             Text("Parse · Optimize"),
             Text("Three intermediate passes disappear."),
-        ).padding(pt(40))
+        )
 
 
-class CodeSlide(Slide):
-    def body(self, context):
+class CodeSlide(TitleAndContentSlide):
+    @property
+    def title(self):
+        return Text("Language-aware code styling")
+
+    def content(self, context):
         return VStack(
-            Text("Language-aware code styling").font("title"),
             CodeBlock(
                 Code.highlight(
                     "def optimize(module):\n"
@@ -65,17 +71,20 @@ class CodeSlide(Slide):
             .font("caption")
             .foreground_style("muted"),
             spacing=pt(28),
-        ).padding(pt(40))
+        )
 
 
-class PipelineSlide(Slide):
+class PipelineSlide(TitleAndContentSlide):
+    @property
+    def title(self):
+        return Text("A simpler lowering pipeline")
+
     def timeline(self):
         return SlideTimeline.steps(3)
 
-    def body(self, context):
+    def content(self, context):
         step = context.state.get("step", 0)
         return VStack(
-            Text("A simpler lowering pipeline").font("title"),
             Pipeline(
                 PipelineStage(Text("Parse"), "primary" if step == 0 else "muted").key(
                     "parse"
@@ -103,7 +112,7 @@ class PipelineSlide(Slide):
             if step >= 2
             else None,
             spacing=pt(28),
-        ).padding(pt(40))
+        )
 
 
 @dataclass(frozen=True)
@@ -117,28 +126,28 @@ class Chart(CompositeView):
         ).frame(height=pt(230))
 
 
-class ResultsSlide(Slide):
+class ResultsSlide(TitleAndContentSlide):
+    @property
+    def title(self):
+        return Text("Compiler performance")
+
     def timeline(self):
         return SlideTimeline.steps(2)
 
-    def body(self, context):
-        return VStack(
-            Text("Compiler performance").font("title"),
-            HStack(
-                Chart()
-                .key("results")
-                .flex()
-                .animation(Animation.smooth(fallback=FallbackPolicy.DISCRETE))
-                .animation_boundary(),
-                Metric(Text("2.7×"), Text("Throughput"))
-                .key("throughput")
-                .transition(Transition.fade())
-                if context.state.get("step", 0)
-                else None,
-                spacing=pt(24),
-            ),
-            spacing=pt(32),
-        ).padding(pt(40))
+    def content(self, context):
+        return HStack(
+            Chart()
+            .key("results")
+            .flex()
+            .animation(Animation.smooth(fallback=FallbackPolicy.DISCRETE))
+            .animation_boundary(),
+            Metric(Text("2.7×"), Text("Throughput"))
+            .key("throughput")
+            .transition(Transition.fade())
+            if context.state.get("step", 0)
+            else None,
+            spacing=pt(24),
+        )
 
 
 # G: future API sketch, intentionally not an implemented media runtime:

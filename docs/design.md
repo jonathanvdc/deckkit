@@ -136,6 +136,11 @@ must compose the supplied views, preserving their keys and modifiers. The editor
 recipe now measures content intrinsically rather than imposing a fixed text-sized
 height. Layout overflow remains explicit when content exceeds the canvas.
 
+Slide structure uses the same nested semantic composition. `SlideWithMargins`
+emits `SlideMargins`, and `TitleAndContentSlide` places a `TitleAndContent` node
+inside it. A theme can therefore replace the margin and title-layout recipes
+independently instead of replacing the entire slide for either concern.
+
 The module reorganization changes fully qualified structural identities. These are
 compiler-local identities, not a version-stable serialized interchange format.
 

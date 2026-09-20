@@ -17,27 +17,25 @@ from .semantic_view import SemanticView
 
 @dataclass(frozen=True)
 class BeforeAfter(SemanticView):
-    """Present two states side by side with a title and concluding takeaway.
+    """Present two states side by side with a concluding takeaway.
 
-    All four content slots accept arbitrary :class:`~deckkit.views.View` values,
+    All three content slots accept arbitrary :class:`~deckkit.views.View` values,
     so callers can use text, stacks, shapes, or other semantic components. The
     default recipe labels the states ``BEFORE`` and ``AFTER`` and highlights the
     latter with the theme's accent style.
 
     Args:
-        title: Heading displayed above the comparison.
         before: Content describing the initial state.
         after: Content describing the resulting state.
         takeaway: Conclusion displayed below the comparison.
     """
 
-    title: View
     before: View
     after: View
     takeaway: View
 
     def __post_init__(self) -> None:
-        for name in ("title", "before", "after", "takeaway"):
+        for name in ("before", "after", "takeaway"):
             if not isinstance(getattr(self, name), View):
                 raise TypeError(
                     f"BeforeAfter.{name} must be a View; wrap text in Text(...)"
@@ -65,7 +63,6 @@ class BeforeAfter(SemanticView):
             )
         ).flex()
         return VStack(
-            self.title.font("title"),
             HStack(before, after, spacing=pt(24)),
             self.takeaway,
             spacing=pt(32),

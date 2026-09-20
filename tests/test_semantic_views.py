@@ -24,6 +24,7 @@ from deckkit.views.semantic import (
     PipelineStage,
     SemanticView,
 )
+from deckkit.views.slides import SlideMargins, TitleAndContent, TitleAndContentSlide
 from examples.themes import EditorialTheme
 
 
@@ -49,6 +50,15 @@ class CustomSlide(Slide):
         return VStack(Text("Default slide"), self.content)
 
 
+class CustomTitleAndContentSlide(TitleAndContentSlide):
+    @property
+    def title(self) -> View:
+        return Text("Title")
+
+    def content(self, context: Context) -> View:
+        return Text("Content")
+
+
 class RecipeTheme(ClarityTheme):
     def render_semantic(self, component: SemanticView, context: Context) -> View | None:
         if isinstance(component, Metric):
@@ -59,6 +69,14 @@ class RecipeTheme(ClarityTheme):
             return VStack(Text("ClarityTheme custom"), component.content)
         if isinstance(component, CustomSlide):
             return VStack(Text("ClarityTheme slide"), component.content)
+        if isinstance(component, SlideMargins):
+            return VStack(Text("ClarityTheme margins"), component.content)
+        if isinstance(component, TitleAndContent):
+            return VStack(
+                Text("ClarityTheme title and content"),
+                component.title,
+                component.content,
+            )
         return super().render_semantic(component, context)
 
 
@@ -66,7 +84,6 @@ def test_rich_content_in_every_semantic_slot(font, tmp_path):
     from pptx import Presentation
 
     component = BeforeAfter(
-        title=HStack(Text("A"), Text("comparison")),
         before=PipelineStage(HStack(Text("Old"), Text("pipeline"))),
         after=Metric(
             VStack(Text("2.7×"), Rectangle().frame(width=pt(20), height=pt(5))),
@@ -80,8 +97,6 @@ def test_rich_content_in_every_semantic_slot(font, tmp_path):
             font_resolver=FileFontResolver({Font("Aptos"): font}),
         ).compile_view(component)
         assert set(texts(result)) >= {
-            "A",
-            "comparison",
             "Old",
             "pipeline",
             "2.7×",
@@ -110,7 +125,7 @@ def test_pill_accepts_any_view_and_before_after_uses_pills(compiler):
     assert background.corner_radius == pt(18)
 
     comparison = compiler.compile_view(
-        BeforeAfter(Text("Change"), Text("Old"), Text("New"), Text("Result"))
+        BeforeAfter(Text("Old"), Text("New"), Text("Result"))
     )
     assert (
         sum(
@@ -190,6 +205,22 @@ def test_theme_can_replace_a_slide_recipe(font):
     assert texts(themed.slides[0].initial) == ["ClarityTheme slide", "Content"]
 
 
+def test_title_and_content_slide_uses_default_and_theme_recipes(font):
+    resolver = FileFontResolver({Font("Aptos"): font})
+    slide = CustomTitleAndContentSlide()
+
+    normal = Deck([slide], theme=ClarityTheme()).compile(font_resolver=resolver)
+    themed = Deck([slide], theme=RecipeTheme()).compile(font_resolver=resolver)
+
+    assert texts(normal.slides[0].initial) == ["Title", "Content"]
+    assert texts(themed.slides[0].initial) == [
+        "ClarityTheme margins",
+        "ClarityTheme title and content",
+        "Title",
+        "Content",
+    ]
+
+
 def test_pipeline_connects_adjacent_stages(compiler):
     result = compiler.compile_view(
         Pipeline(
@@ -237,12 +268,15 @@ def test_keyed_children_survive_recipe_changes(font):
 @pytest.mark.parametrize(
     "factory",
     [
-        lambda: BeforeAfter(Text("Title"), "old", Text("new"), Text("Takeaway")),
+        lambda: BeforeAfter("old", Text("new"), Text("Takeaway")),
         lambda: Metric("value", Text("label")),
         lambda: Metric(Text("value"), "label"),
         lambda: PipelineStage("label"),
         lambda: Pill("label"),
         lambda: Card("content"),
+        lambda: SlideMargins("content"),
+        lambda: TitleAndContent("title", Text("content")),
+        lambda: TitleAndContent(Text("title"), "content"),
     ],
 )
 def test_semantic_content_requires_views(factory):

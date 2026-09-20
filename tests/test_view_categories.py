@@ -29,6 +29,7 @@ from deckkit.views import (
     ZStack,
 )
 from deckkit.views.semantic import Metric, SemanticView
+from deckkit.views.slides import SlideWithMargins, TitleAndContentSlide
 from deckkit.views.stack import Stack
 
 
@@ -56,7 +57,16 @@ def test_only_composites_have_body():
 
 
 @pytest.mark.parametrize(
-    "base", [CompositeView, Slide, SemanticView, LayoutView, Stack]
+    "base",
+    [
+        CompositeView,
+        Slide,
+        SemanticView,
+        SlideWithMargins,
+        TitleAndContentSlide,
+        LayoutView,
+        Stack,
+    ],
 )
 def test_incomplete_categories_are_abstract(base):
     with pytest.raises(TypeError, match="abstract"):
