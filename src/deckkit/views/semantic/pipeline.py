@@ -61,7 +61,7 @@ class Pipeline(SemanticView):
         object.__setattr__(self, "annotations", tuple(annotations))
         object.__setattr__(self, "connector_style", connector_style)
 
-    def default_body(self, context: Context) -> View:
+    def body(self, context: Context) -> View:
         """Arrange stages horizontally and connect adjacent stage anchors."""
         keyed_stages: list[PipelineStage] = []
         keys: list[str] = []

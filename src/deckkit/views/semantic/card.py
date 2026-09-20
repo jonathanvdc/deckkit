@@ -26,7 +26,7 @@ class Card(SemanticView):
         if not isinstance(self.content, View):
             raise TypeError("Card.content must be a View")
 
-    def default_body(self, context: Context) -> View:
+    def body(self, context: Context) -> View:
         return ZStack(
             Rectangle(corner_radius=pt(12)).foreground_style(self.background_style),
             self.content.foreground_style(self.content_style)

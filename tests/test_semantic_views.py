@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from deckkit import Compiler
+from deckkit import Compiler, Deck
 from deckkit.backends import pptx, svg
 from deckkit.drawables import DrawableConnector, DrawableRectangle, DrawableText
 from deckkit.expanded_views import ExpandedText
@@ -14,7 +14,7 @@ from deckkit.fonts import (
 )
 from deckkit.themes import ClarityTheme
 from deckkit.units import pt
-from deckkit.views import Context, HStack, Rectangle, Text, View, VStack
+from deckkit.views import Context, HStack, Rectangle, Slide, Text, View, VStack
 from deckkit.views.semantic import (
     BeforeAfter,
     Card,
@@ -37,8 +37,16 @@ def texts(compilation):
 class CustomSemantic(SemanticView):
     content: View
 
-    def default_body(self, context: Context) -> View:
+    def body(self, context: Context) -> View:
         return VStack(Text("Default"), self.content)
+
+
+@dataclass(frozen=True)
+class CustomSlide(Slide):
+    content: View
+
+    def body(self, context: Context) -> View:
+        return VStack(Text("Default slide"), self.content)
 
 
 class RecipeTheme(ClarityTheme):
@@ -49,6 +57,8 @@ class RecipeTheme(ClarityTheme):
             return VStack(Text("ClarityTheme stage"), component.label)
         if isinstance(component, CustomSemantic):
             return VStack(Text("ClarityTheme custom"), component.content)
+        if isinstance(component, CustomSlide):
+            return VStack(Text("ClarityTheme slide"), component.content)
         return super().render_semantic(component, context)
 
 
@@ -167,6 +177,17 @@ def test_theme_hook_applies_to_all_semantic_types(font):
         "ClarityTheme custom",
         "Content",
     ]
+
+
+def test_theme_can_replace_a_slide_recipe(font):
+    resolver = FileFontResolver({Font("Aptos"): font})
+    slide = CustomSlide(Text("Content"))
+
+    normal = Deck([slide], theme=ClarityTheme()).compile(font_resolver=resolver)
+    themed = Deck([slide], theme=RecipeTheme()).compile(font_resolver=resolver)
+
+    assert texts(normal.slides[0].initial) == ["Default slide", "Content"]
+    assert texts(themed.slides[0].initial) == ["ClarityTheme slide", "Content"]
 
 
 def test_pipeline_connects_adjacent_stages(compiler):

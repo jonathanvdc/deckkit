@@ -43,7 +43,7 @@ class BeforeAfter(SemanticView):
                     f"BeforeAfter.{name} must be a View; wrap text in Text(...)"
                 )
 
-    def default_body(self, context: Context) -> View:
+    def body(self, context: Context) -> View:
         """Arrange the comparison using the default horizontal recipe."""
         label_width, label_height = pt(88), pt(36)
         before = Card(

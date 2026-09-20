@@ -30,7 +30,7 @@ class Pill(SemanticView):
         if not isinstance(self.content, View):
             raise TypeError("Pill.content must be a View; wrap text in Text(...)")
 
-    def default_body(self, context: Context) -> View:
+    def body(self, context: Context) -> View:
         """Place padded content over a themed capsule."""
         return ZStack(
             Rectangle(corner_radius=pt(18)).foreground_style(self.background_style),

@@ -30,7 +30,7 @@ class PipelineStage(SemanticView):
                 "PipelineStage.label must be a View; wrap text in Text(...)"
             )
 
-    def default_body(self, context: Context) -> View:
+    def body(self, context: Context) -> View:
         """Place the padded label over a themed surface rectangle."""
         return ZStack(
             Rectangle().foreground_style("surface"),

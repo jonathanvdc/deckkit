@@ -22,5 +22,5 @@ class CodeBlock(SemanticView):
         if not isinstance(self.content, Code):
             raise TypeError("CodeBlock.content must be Code")
 
-    def default_body(self, context: Context) -> View:
+    def body(self, context: Context) -> View:
         return Card(self.content, background_style=self.background_style)

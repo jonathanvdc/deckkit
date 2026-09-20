@@ -213,10 +213,11 @@ comparison = BeforeAfter(
 )
 ```
 
-All semantic components inherit `SemanticView`. Its `body(context)` asks
+All semantic components inherit `SemanticView`. During expansion it asks
 `theme.render_semantic(component, context)` for a view. Returning `None` selects
-`component.default_body(context)`. Themes can override built-in or application-defined
-semantic types through this single hook. Recipes remain ordinary view composition.
+the component's authored `body(context)`. Themes can override built-in or
+application-defined semantic types through this single hook. Recipes remain ordinary
+view composition.
 `Metric.value`, `Metric.label`, `Pill.content`, `Card.content`, `PipelineStage.label`, and every
 `BeforeAfter` content slot require views; wrap strings in `Text(...)`. A `Pill` can
 therefore contain text or richer composed content. Style tokens such as
@@ -237,7 +238,7 @@ from `deckkit.themes`. The package root is reserved for deck compilation entry p
 `View` supplies modifiers and identity without a `body` method. Use
 `CompositeView` for application-defined compositions and implement its abstract
 `body(context) -> View`. `Slide` and `SemanticView` are composite views; semantic
-components implement `default_body` because their shared `body` handles theme recipes.
+components implement `body`; semantic theme dispatch occurs during expansion.
 
 `Text`, `Image` and `Rectangle` inherit `PrimitiveView`. `LayoutView` is the abstract
 category for views that arrange children with a layout policy; stacks and custom

@@ -33,7 +33,7 @@ class Metric(SemanticView):
                 "Metric value and label must be Views; wrap text in Text(...)"
             )
 
-    def default_body(self, context: Context) -> View:
+    def body(self, context: Context) -> View:
         """Stack and style the value and label using the default recipe."""
         return VStack(
             self.value.font("metric").foreground_style("accent"),

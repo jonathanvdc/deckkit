@@ -127,9 +127,9 @@ example PPTX geometry remains unchanged after migrating literal points to `pt(..
 
 ## Semantic composition convention
 
-Each semantic view inherits `SemanticView` and defines `default_body(context)`.
-The shared, final `body` calls `Theme.render_semantic(component, context)` first;
-`None` delegates to the default. There is no renderer-side semantic dispatch.
+Each semantic view inherits `SemanticView` and defines `body(context)`.
+Composite expansion asks `Theme.render_semantic(component, context)` first;
+`None` delegates to the authored body. There is no renderer-side semantic dispatch.
 All presentation content slots are views (including metric values/labels and stage
 labels); emphasis and similar design tokens remain scalar properties. Theme recipes
 must compose the supplied views, preserving their keys and modifiers. The editorial

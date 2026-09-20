@@ -46,6 +46,7 @@ def test_only_composites_have_body():
     ):
         assert not hasattr(view, "body")
     assert issubclass(Slide, CompositeView)
+    assert issubclass(Slide, SemanticView)
     assert issubclass(SemanticView, CompositeView)
     assert issubclass(Metric, CompositeView)
     for view in (Text, Image, Rectangle):

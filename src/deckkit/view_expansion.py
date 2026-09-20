@@ -101,7 +101,7 @@ def expand_view(
                 semantic = tuple(
                     (f.name, getattr(value, f.name)) for f in fields(value)
                 )
-            body = value.body(local_context)
+            body = value._resolve_body(local_context)
             if not isinstance(body, View):
                 raise TypeError(f"{typename}.body() must return a View")
             expanded = ExpandedComponent(
