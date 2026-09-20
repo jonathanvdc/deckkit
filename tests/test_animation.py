@@ -211,9 +211,7 @@ def test_results_slide_resizes_chart_discretely(compiler):
     assert not planned.diagnostics
 
 
-def test_pptx_replacement_background_stays_below_unchanged_label(
-    compiler, tmp_path
-):
+def test_pptx_replacement_background_stays_below_unchanged_label(compiler, tmp_path):
     from lxml import etree
 
     from deckkit.backends import pptx
@@ -234,7 +232,8 @@ def test_pptx_replacement_background_stays_below_unchanged_label(
     replacement_index = next(
         index
         for index, shape in enumerate(shapes)
-        if "#build-1" in shape.xpath("string(p:nvSpPr/p:cNvPr/@name)", namespaces=namespaces)
+        if "#build-1"
+        in shape.xpath("string(p:nvSpPr/p:cNvPr/@name)", namespaces=namespaces)
         and not shape.xpath(".//a:t", namespaces=namespaces)
     )
     label_index = next(
