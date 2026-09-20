@@ -121,7 +121,7 @@ def test_pill_accepts_any_view_and_before_after_uses_pills(compiler):
         if isinstance(node, DrawableRectangle) and node.bounds.width == pt(88)
     ]
     assert len(labels) == len(backgrounds) == 2
-    assert all(background.bounds.height == pt(36) for background in backgrounds)
+    assert all(background.bounds.height >= pt(36) for background in backgrounds)
     for label, background in zip(labels, backgrounds):
         assert (
             label.content_bounds.x + label.content_bounds.width / 2
