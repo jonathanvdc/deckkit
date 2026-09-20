@@ -9,7 +9,7 @@ from deckkit.backends import pptx, svg
 from deckkit.drawables import DrawableText
 from deckkit.expanded_views import ExpandedLayout, ExpandedView
 from deckkit.fonts import FileFontResolver, Font
-from deckkit.layout import LayoutOverflow
+from deckkit.geometry import RelativePoint
 from deckkit.layouts import OverlayLayout, StackLayout
 from deckkit.measurement import PillowMeasurer
 from deckkit.themes import ClarityTheme
@@ -116,13 +116,29 @@ def test_fixed_intrinsic_flex(compiler):
     assert result.expanded_tree.spacing == pt(10)
 
 
-def test_overflow(compiler):
-    with pytest.raises(LayoutOverflow) as error:
-        compiler.compile_view(
-            Text("This cannot fit").frame(width=pt(30), height=pt(10))
-        )
-    assert error.value.required[0] > error.value.available[0]
-    assert "Shorten content" in str(error.value)
+@pytest.mark.parametrize(
+    ("alignment", "factor"),
+    [
+        (RelativePoint.top_left, 0),
+        (RelativePoint.center, 0.5),
+        (RelativePoint.bottom_right, 1),
+    ],
+)
+def test_frame_aligns_oversized_content_without_clipping(compiler, alignment, factor):
+    frame = compiler.compile_view(
+        Text("This cannot fit").frame(width=pt(30), height=pt(10), alignment=alignment)
+    ).drawable.children[0]
+    text = frame.children[0]
+
+    assert frame.bounds.width == pt(30)
+    assert frame.bounds.height == pt(10)
+    assert text.bounds.width > frame.bounds.width
+    assert text.bounds.x.points == pytest.approx(
+        (frame.bounds.width - text.bounds.width).points * factor
+    )
+    assert text.bounds.y.points == pytest.approx(
+        (frame.bounds.height - text.bounds.height).points * factor
+    )
 
 
 def test_state_and_insertion(compiler):

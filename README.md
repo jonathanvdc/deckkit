@@ -142,7 +142,9 @@ are rejected; flexible allocation remains a separate layout concept.
 Concrete proposals, placement plans, scene bounds, font sizes and measured text
 metrics all retain `Length`. Flex weights and line-spacing multipliers remain floats.
 Custom layout policies receive `ProposedSize`; either dimension can be `None` to ask
-for the child's ideal size.
+for the child's ideal size. Proposals are advisory: layouts may return a different size
+and may place children outside their own bounds, including at negative offsets. Drawing
+is not implicitly clipped.
 
 Frames and padding are structural views, so modifier order is visible in layout:
 
@@ -166,7 +168,8 @@ Exact `width` and `height` values create fixed frames. Flexible frames accept mi
 ideal and maximum dimensions; `unbounded` consumes a concrete size proposed by the
 parent and falls back to the ideal child size for an unspecified proposal. Because
 frame and padding return wrapper views, their result type is `View`, and reversing
-their order changes which wrapper is outermost.
+their order changes which wrapper is outermost. Like SwiftUI, a frame does not clip
+or reject an oversized child; it aligns that child relative to the reported frame.
 
 Images use 96 DPI for intrinsic physical size by default. `Image(path, dpi=192)`
 explicitly changes that conversion; embedded DPI metadata is ignored to keep layout

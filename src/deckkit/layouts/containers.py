@@ -8,7 +8,6 @@ from ..geometry import RelativePoint
 from ..layout import (
     LayoutChild,
     LayoutContext,
-    LayoutOverflow,
     LayoutPlan,
     Placement,
     ProposedSize,
@@ -68,17 +67,11 @@ class StackLayout:
                         )
                         plans[i] = child.measure(request)
             else:
-                if used > available + pt(1e-6):
-                    required = (used, pt(0)) if horizontal else (pt(0), used)
-                    raise LayoutOverflow(
-                        None,
-                        (proposal.width or pt(0), proposal.height or pt(0)),
-                        required,
-                    )
                 total = sum(child.flex for child in flexible)
+                remaining = max(pt(0), available - used)
                 for i, child in enumerate(children):
                     if child.flex:
-                        share = (available - used) * child.flex / total
+                        share = remaining * child.flex / total
                         request = (
                             ProposedSize(share, cross_proposal)
                             if horizontal

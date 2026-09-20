@@ -3,14 +3,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from ..layout import (
-    LayoutChild,
-    LayoutContext,
-    LayoutOverflow,
-    LayoutPlan,
-    Placement,
-    ProposedSize,
-)
+from ..layout import LayoutChild, LayoutContext, LayoutPlan, Placement, ProposedSize
 from ..units import Length, pt
 from ..views.modifier_views import Edge, EdgeSet, FrameMaximum, FrameSpec, unbounded
 
@@ -122,13 +115,14 @@ class FrameLayout:
             s.ideal_height,
             s.max_height,
         )
-        if plan.width > width + pt(1e-6) or plan.height > height + pt(1e-6):
-            raise LayoutOverflow(None, (width, height), (plan.width, plan.height))
         x = (width - plan.width) * s.alignment.x
         y = (height - plan.height) * s.alignment.y
         return LayoutPlan(
             width,
             height,
             (Placement(child, plan, x, y),),
-            {"content_offset": (x, y), "content_size": (plan.width, plan.height)},
+            {
+                "content_offset": (x, y),
+                "content_size": (plan.width, plan.height),
+            },
         )

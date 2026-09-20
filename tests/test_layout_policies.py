@@ -12,7 +12,6 @@ from deckkit.layout import (
     Layout,
     LayoutContext,
     LayoutEngine,
-    LayoutOverflow,
     LayoutPlan,
     Placement,
     ProposedSize,
@@ -132,6 +131,20 @@ def test_vertical_flex_allocation(compiler):
     )
 
 
+def test_stack_may_exceed_an_insufficient_proposal(compiler):
+    view = HStack(
+        Rectangle().frame(width=pt(60), height=pt(20)),
+        Rectangle().flex(),
+    )
+    tree = expand_view(view, Context(State(), compiler.environment))
+    layout = LayoutEngine(
+        LayoutContext(compiler.measurer, compiler.font_resolver)
+    ).measure(tree, ProposedSize(pt(50), pt(20)))
+
+    assert layout.bounds.width == pt(76)
+    assert layout.children[1].bounds.width == pt(0)
+
+
 def test_flex_applied_after_structural_modifier_allocates_the_wrapper(compiler):
     layout = compiler.compile_view(
         HStack(
@@ -143,25 +156,53 @@ def test_flex_applied_after_structural_modifier_allocates_the_wrapper(compiler):
     assert layout.children[1].bounds.width == pt(924)
 
 
-def test_bad_custom_placement_is_diagnosed(compiler):
-    class BadLayout:
+def test_custom_layout_may_place_content_outside_its_bounds(compiler):
+    class OverflowingLayout:
         def measure(self, c, children, context):
             plan = children[0].measure(c)
             return LayoutPlan(
                 plan.width, plan.height, (Placement(children[0], plan, pt(20), pt(0)),)
             )
 
-    with pytest.raises(LayoutOverflow) as error:
-        compiler.compile_view(CustomLayoutView(BadLayout(), Text("Outside")))
-    assert error.value.identity.endswith("test_layout_policies.CustomLayoutView")
+    layout = compiler.compile_view(
+        CustomLayoutView(OverflowingLayout(), Text("Outside"))
+    ).drawable.children[0]
+
+    assert layout.children[0].bounds.x == layout.bounds.x + pt(20)
+    assert layout.children[0].bounds.x + layout.children[0].bounds.width > (
+        layout.bounds.x + layout.bounds.width
+    )
 
 
-def test_modifier_overflow_has_component_identity(compiler):
-    with pytest.raises(LayoutOverflow) as error:
+def test_custom_layout_may_use_negative_child_offsets(compiler):
+    class NegativeLayout:
+        def measure(self, proposal, children, context):
+            plan = children[0].measure(proposal)
+            return LayoutPlan(
+                plan.width,
+                plan.height,
+                (Placement(children[0], plan, pt(-10), pt(-5)),),
+            )
+
+    layout = compiler.compile_view(
+        CustomLayoutView(NegativeLayout(), Text("Outside"))
+    ).drawable.children[0]
+
+    assert layout.children[0].bounds.x == pt(-10)
+    assert layout.children[0].bounds.y == pt(-5)
+
+
+def test_structural_frame_overflow_preserves_keyed_content(compiler):
+    frame = (
         compiler.compile_view(
             Text("No space").key("title").frame(width=pt(1)).padding(pt(5))
         )
-    assert error.value.identity.endswith("deckkit.views.modifier_views.Frame")
+        .drawable.children[0]
+        .children[0]
+    )
+
+    assert frame.bounds.width == pt(1)
+    assert "key:title:" in frame.children[0].identity
 
 
 def test_flexible_frame_fills_parent_and_aligns_intrinsic_child(compiler):

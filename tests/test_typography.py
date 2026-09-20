@@ -116,12 +116,11 @@ def test_verbatim_flow_keeps_code_layout(compiler, tmp_path):
 
 
 def test_verbatim_flow_does_not_wrap(compiler):
-    from deckkit.layout import LayoutOverflow
+    frame = compiler.compile_view(
+        Text("one two three", flow="verbatim").frame(width=pt(20))
+    ).drawable.children[0]
 
-    with pytest.raises(LayoutOverflow):
-        compiler.compile_view(
-            Text("one two three", flow="verbatim").frame(width=pt(20))
-        )
+    assert frame.children[0].bounds.width > frame.bounds.width
 
 
 def test_text_rejects_unknown_flow():

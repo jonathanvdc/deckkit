@@ -136,18 +136,6 @@ class _Child:
                         raise ValueError(
                             f"Layout at {self.identity} placed an unrelated child"
                         )
-                    if not all(v >= pt(0) for v in (placement.x, placement.y)):
-                        raise ValueError(f"Invalid child placement at {self.identity}")
-                    required = (
-                        placement.x + placement.plan.width,
-                        placement.y + placement.plan.height,
-                    )
-                    if required[0] > plan.width + pt(1e-6) or required[
-                        1
-                    ] > plan.height + pt(1e-6):
-                        raise LayoutOverflow(
-                            self.identity, (plan.width, plan.height), required
-                        )
                 self._cache[proposal] = plan
             except LayoutOverflow as error:
                 if error.identity is not None:
