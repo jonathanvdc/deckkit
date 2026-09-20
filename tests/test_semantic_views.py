@@ -166,7 +166,10 @@ def test_pill_accepts_any_view_and_before_after_uses_pills(compiler):
     assert len(cards) == 2
     for pill_background, card_background in zip(backgrounds, cards):
         assert pill_background.bounds.x == card_background.bounds.x + pt(20)
-        assert pill_background.bounds.y == card_background.bounds.y + pt(20)
+        assert (
+            pill_background.bounds.y + pill_background.bounds.height / 2
+            == card_background.bounds.y + pt(38)
+        )
 
 
 def test_theme_hook_applies_to_all_semantic_types(font):
