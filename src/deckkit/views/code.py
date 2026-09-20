@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from ..context import Context
+from ..theme import CodeTextStyle, ColorStyle, Typography
+from ..tokens import DesignToken
 from .composite_view import CompositeView
 from .text import Text, TextLine, TextSpan
 from .view import View
@@ -26,9 +28,9 @@ class CodeSpan:
 
     text: str
     token: str | None = None
-    foreground_style: str | None = None
-    background_style: str | None = None
-    font_role: str | None = None
+    foreground_style: ColorStyle | None = None
+    background_style: ColorStyle | None = None
+    font_style: DesignToken[Typography] | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.text, str):
@@ -45,12 +47,12 @@ class CodeLine:
     """One logical source line, optionally highlighted across its full width."""
 
     spans: tuple[CodeSpan, ...]
-    background_style: str | None
+    background_style: ColorStyle | None
 
     def __init__(
         self,
         *spans: CodeSpan | str,
-        background_style: str | None = None,
+        background_style: ColorStyle | None = None,
     ) -> None:
         normalized = []
         for span in spans:
@@ -132,10 +134,10 @@ class Code(CompositeView):
                 spans.append(
                     TextSpan(
                         span.text,
-                        span.font_role or style.font_role,
+                        span.font_style or style.font_style,
                         span.foreground_style or style.foreground_style,
                         span.background_style or style.background_style,
                     )
                 )
             lines.append(TextLine(*spans, background_style=line.background_style))
-        return Text(lines[0], *lines[1:], flow="verbatim").font("code")
+        return Text(lines[0], *lines[1:], flow="verbatim").font(CodeTextStyle)

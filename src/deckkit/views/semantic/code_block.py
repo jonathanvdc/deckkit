@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ...context import Context
+from ...theme import ColorStyle
 from ..code import Code
 from ..view import View
 from .card import Card
@@ -16,7 +17,7 @@ class CodeBlock(SemanticView):
     """Place code on a padded, theme-overridable surface."""
 
     content: Code
-    background_style: str = "surface"
+    background_style: ColorStyle | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.content, Code):

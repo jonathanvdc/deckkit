@@ -5,11 +5,29 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ...context import Context
-from ...units import pt
+from ...theme import Color, ColorStyle, PrimaryColor, SpacingUnit, SurfaceColor
+from ...tokens import DesignToken
+from ...units import Length
 from ..rectangle import Rectangle
 from ..view import View
 from ..zstack import ZStack
 from .semantic_view import SemanticView
+
+
+@dataclass(frozen=True)
+class PipelineStageStyle:
+    background: DesignToken[Color]
+    foreground: DesignToken[Color]
+    padding: Length
+
+
+PipelineStageStyleToken = DesignToken[PipelineStageStyle](
+    "component.pipeline-stage",
+    lambda values: PipelineStageStyle(
+        SurfaceColor, PrimaryColor, values[SpacingUnit] * 5
+    ),
+    value_type=PipelineStageStyle,
+)
 
 
 @dataclass(frozen=True)
@@ -22,7 +40,7 @@ class PipelineStage(SemanticView):
     """
 
     label: View
-    emphasis: str = "primary"
+    emphasis: ColorStyle | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.label, View):
@@ -32,7 +50,10 @@ class PipelineStage(SemanticView):
 
     def body(self, context: Context) -> View:
         """Place the padded label over a themed surface rectangle."""
+        style = context.environment[PipelineStageStyleToken]
         return ZStack(
-            Rectangle().foreground_style("surface"),
-            self.label.foreground_style(self.emphasis).padding(pt(20)),
+            Rectangle().foreground_style(style.background),
+            self.label.foreground_style(self.emphasis or style.foreground).padding(
+                style.padding
+            ),
         )

@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
 from math import isfinite
 from types import MappingProxyType
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, Union
+
+from typing_extensions import TypeAlias
 
 from .fonts import Font
+from .tokens import DesignToken, TokenAssignment, TokenResolver
 from .units import Length, pt, require_length
 
 if TYPE_CHECKING:
@@ -17,7 +19,7 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True)
-class TextStyle:
+class Typography:
     """A typography role's font face, physical size and line-height multiplier.
 
     Font weight/style are selected by the font file, without synthetic styling.
@@ -30,7 +32,7 @@ class TextStyle:
     def __post_init__(self) -> None:
         if not isinstance(self.font, Font):
             raise TypeError(
-                "TextStyle.font must be a Font request; configure files on FileFontResolver"
+                "Typography.font must be a Font request; configure files on FileFontResolver"
             )
         require_length(self.size)
         if self.size <= pt(0):
@@ -39,29 +41,216 @@ class TextStyle:
             raise ValueError("Line spacing must be finite and positive")
 
 
+@dataclass(frozen=True, init=False)
+class Color:
+    """A normalized RGB color, distinct from a semantic color token.
+
+    Channels are stored as floats from zero through one. Construct with normalized
+    channels or an RGB hex string; rendering converts back to hex only at the
+    backend boundary.
+    """
+
+    red: float
+    green: float
+    blue: float
+
+    def __init__(
+        self,
+        red: float | str,
+        green: float | None = None,
+        blue: float | None = None,
+    ) -> None:
+        if isinstance(red, str):
+            if green is not None or blue is not None:
+                raise TypeError("Hex Color construction does not accept RGB channels")
+            parsed = type(self).from_hex(red)
+            channels = (parsed.red, parsed.green, parsed.blue)
+        else:
+            if green is None or blue is None:
+                raise TypeError("RGB Color construction requires all three channels")
+            channels = (float(red), float(green), float(blue))
+        if any(not isfinite(channel) or not 0 <= channel <= 1 for channel in channels):
+            raise ValueError(
+                "Color channels must be finite values from zero through one"
+            )
+        object.__setattr__(self, "red", channels[0])
+        object.__setattr__(self, "green", channels[1])
+        object.__setattr__(self, "blue", channels[2])
+
+    @classmethod
+    def from_hex(cls, value: str) -> Color:
+        """Parse ``#RRGGBB`` into normalized RGB channels."""
+        if not isinstance(value, str) or not value.startswith("#") or len(value) != 7:
+            raise ValueError("Color hex values must use #RRGGBB notation")
+        try:
+            channels = tuple(
+                int(value[index : index + 2], 16) / 255 for index in (1, 3, 5)
+            )
+        except ValueError:
+            raise ValueError("Color hex values must use #RRGGBB notation") from None
+        result = object.__new__(cls)
+        object.__setattr__(result, "red", channels[0])
+        object.__setattr__(result, "green", channels[1])
+        object.__setattr__(result, "blue", channels[2])
+        return result
+
+    def to_hex(self) -> str:
+        """Return a canonical uppercase ``#RRGGBB`` representation."""
+        channels = (self.red, self.green, self.blue)
+        return "#" + "".join(f"{round(channel * 255):02X}" for channel in channels)
+
+    @property
+    def hex(self) -> str:
+        """Compatibility shorthand for :meth:`to_hex`."""
+        return self.to_hex()
+
+    def interpolate(self, other: Color, amount: float) -> Color:
+        """Interpolate between two colors in normalized sRGB component space."""
+        if not isinstance(other, Color):
+            raise TypeError("Color interpolation requires another Color")
+        if not isfinite(amount) or not 0 <= amount <= 1:
+            raise ValueError("Color interpolation amount must be from zero through one")
+        return Color(
+            self.red + (other.red - self.red) * amount,
+            self.green + (other.green - self.green) * amount,
+            self.blue + (other.blue - self.blue) * amount,
+        )
+
+    def mix(self, other: Color, amount: float = 0.5) -> Color:
+        """Alias for :meth:`interpolate`, convenient in token computations."""
+        return self.interpolate(other, amount)
+
+
+ColorStyle: TypeAlias = Union[DesignToken[Color], Color]
+
+
 @dataclass(frozen=True)
 class CodeTokenStyle:
     """Optional text-style overrides associated with a code token scope."""
 
-    foreground_style: str | None = None
-    background_style: str | None = None
-    font_role: str | None = None
+    foreground_style: ColorStyle | None = None
+    background_style: ColorStyle | None = None
+    font_style: DesignToken[Typography] | None = None
 
 
-class Theme(ABC):
-    """Design-system contract, independent of any particular palette or type scale."""
+def _positive_length(value: Length) -> None:
+    require_length(value)
+    if value <= pt(0):
+        raise ValueError("Design-token length must be positive")
+
+
+def _positive_number(value: float) -> None:
+    if not isfinite(value) or value <= 0:
+        raise ValueError("Design-token scale must be finite and positive")
+
+
+# Foundational tokens. Themes normally override only a small selection of these;
+# semantic and component tokens below recompute from them.
+BaseFont = DesignToken[Font]("font.base", value_type=Font)
+CodeFont = DesignToken[Font](
+    "font.code", lambda values: values[BaseFont], value_type=Font
+)
+BaseFontSize = DesignToken[Length](
+    "type.base-size", value_type=Length, validate=_positive_length
+)
+TypeScale = DesignToken[float](
+    "type.scale", lambda values: 1.0, value_type=(int, float), validate=_positive_number
+)
+LineSpacing = DesignToken[float](
+    "type.line-spacing",
+    lambda values: 1.1,
+    value_type=(int, float),
+    validate=_positive_number,
+)
+SpacingUnit = DesignToken[Length](
+    "spacing.unit", value_type=Length, validate=_positive_length
+)
+RadiusScale = DesignToken[float](
+    "radius.scale",
+    lambda values: 1.0,
+    value_type=(int, float),
+    validate=_positive_number,
+)
+
+PrimaryColor = DesignToken[Color]("color.primary", value_type=Color)
+MutedColor = DesignToken[Color]("color.muted", value_type=Color)
+SurfaceColor = DesignToken[Color]("color.surface", value_type=Color)
+AccentColor = DesignToken[Color]("color.accent", value_type=Color)
+OnAccentColor = DesignToken[Color]("color.on-accent", value_type=Color)
+
+BodyTextStyle = DesignToken[Typography](
+    "text.body",
+    lambda values: Typography(
+        values[BaseFont], values[BaseFontSize], values[LineSpacing]
+    ),
+    value_type=Typography,
+)
+TitleTextStyle = DesignToken[Typography](
+    "text.title",
+    lambda values: Typography(
+        values[BaseFont],
+        values[BaseFontSize] * (1.6 * values[TypeScale]),
+        values[LineSpacing],
+    ),
+    value_type=Typography,
+)
+CaptionTextStyle = DesignToken[Typography](
+    "text.caption",
+    lambda values: Typography(
+        values[BaseFont],
+        values[BaseFontSize] * (0.8 * values[TypeScale]),
+        values[LineSpacing],
+    ),
+    value_type=Typography,
+)
+MetricTextStyle = DesignToken[Typography](
+    "text.metric",
+    lambda values: Typography(
+        values[BaseFont],
+        values[BaseFontSize] * (2.3 * values[TypeScale]),
+        values[LineSpacing],
+    ),
+    value_type=Typography,
+)
+CodeTextStyle = DesignToken[Typography](
+    "text.code",
+    lambda values: Typography(
+        values[CodeFont],
+        values[BaseFontSize] * (0.9 * values[TypeScale]),
+        values[LineSpacing],
+    ),
+    value_type=Typography,
+)
+TextStyle = DesignToken[Typography](
+    "environment.text-style",
+    lambda values: values[BodyTextStyle],
+    value_type=Typography,
+)
+ForegroundColor = DesignToken[Color](
+    "environment.foreground-color",
+    lambda values: values[PrimaryColor],
+    value_type=Color,
+)
+
+
+class Theme:
+    """Root configuration for an extensible graph of design tokens."""
 
     code_styles: ClassVar[Mapping[str, CodeTokenStyle]] = MappingProxyType({})
 
-    @abstractmethod
-    def text_style(self, role: str) -> TextStyle:
-        """Resolve a semantic typography role."""
-        raise NotImplementedError
+    def __init__(
+        self,
+        overrides: Mapping[DesignToken[Any], TokenAssignment[Any]] | None = None,
+    ) -> None:
+        self._token_overrides = MappingProxyType(dict(overrides or {}))
 
-    @abstractmethod
-    def color(self, role: str) -> str:
-        """Resolve a semantic color role to an RGB hex color."""
-        raise NotImplementedError
+    def token_overrides(self) -> dict[DesignToken[Any], TokenAssignment[Any]]:
+        """Return root values for the open-ended design-token graph."""
+        return dict(self._token_overrides)
+
+    def token_resolver(self) -> TokenResolver:
+        """Create the root token-resolution scope for this theme."""
+        return TokenResolver(self.token_overrides())
 
     def code_style(self, language: str | None, token: str | None) -> CodeTokenStyle:
         """Resolve cascading language and token scopes to presentation roles."""
@@ -83,7 +272,7 @@ class Theme(ABC):
                 result = CodeTokenStyle(
                     override.foreground_style or result.foreground_style,
                     override.background_style or result.background_style,
-                    override.font_role or result.font_role,
+                    override.font_style or result.font_style,
                 )
         return result
 

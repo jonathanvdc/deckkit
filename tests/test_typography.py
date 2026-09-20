@@ -1,5 +1,4 @@
 from pathlib import Path
-from types import MappingProxyType
 from xml.etree import ElementTree as ET
 
 import pytest
@@ -16,7 +15,17 @@ from deckkit.fonts import (
     FileFontResolver,
     Font,
 )
-from deckkit.themes import ClarityTheme, TextStyle
+from deckkit.themes import (
+    AccentColor,
+    BodyTextStyle,
+    ClarityTheme,
+    Color,
+    DesignToken,
+    MissingTokenError,
+    SurfaceColor,
+    TitleTextStyle,
+    Typography,
+)
 from deckkit.units import pt
 from deckkit.views import Text, TextLine, TextSpan, VStack
 from examples.themes import EditorialTheme
@@ -30,15 +39,14 @@ def test_role_fonts_reach_measurement_and_exports(font, tmp_path):
     # Distinct paths make accidental reuse visible on every supported platform.
     title_font = tmp_path / "title.ttf"
     title_font.write_bytes(Path(font).read_bytes())
-    roles = dict(ClarityTheme().typography)
-    roles["title"] = TextStyle(Font("Title Font"), pt(36), 1.4)
-
-    class MixedFontTheme(ClarityTheme):
-        typography = MappingProxyType(dict(roles))
-
-    theme = MixedFontTheme()
-    roles["title"] = TextStyle(Font("Test Font"), pt(12))
-    assert theme.text_style("title").size == pt(36)
+    theme = ClarityTheme(
+        {
+            TitleTextStyle: TitleTextStyle.set(
+                Typography(Font("Title Font"), pt(36), 1.4)
+            )
+        }
+    )
+    assert theme.token_resolver()[TitleTextStyle].size == pt(36)
 
     class RecordingMeasurer:
         def __init__(self):
@@ -55,7 +63,9 @@ def test_role_fonts_reach_measurement_and_exports(font, tmp_path):
         font_resolver=FileFontResolver(
             {Font("Aptos"): font, Font("Title Font"): str(title_font)}
         ),
-    ).compile_view(VStack(Text("Title"), Text("Body").font("body")).font("title"))
+    ).compile_view(
+        VStack(Text("Title"), Text("Body").font(BodyTextStyle)).font(TitleTextStyle)
+    )
     layout = compiled.drawable
     assert [(r[1].path, r[2], r[4]) for r in measurer.requests] == [
         (str(title_font), pt(36), 1.4),
@@ -74,11 +84,12 @@ def test_role_fonts_reach_measurement_and_exports(font, tmp_path):
 
 
 def test_missing_role_is_actionable(font):
-    with pytest.raises(ValueError, match="Unknown typography role.*missing"):
+    missing = DesignToken[Typography]("text.missing")
+    with pytest.raises(MissingTokenError, match="text.missing"):
         Compiler(
             ClarityTheme(),
             font_resolver=FileFontResolver({Font("Aptos"): font}),
-        ).compile_view(Text("Hello").font("missing"))
+        ).compile_view(Text("Hello").font(missing))
 
 
 def test_verbatim_flow_keeps_code_layout(compiler, tmp_path):
@@ -134,10 +145,10 @@ def test_structured_text_materializes_styled_runs_and_backgrounds(compiler, tmp_
     compiled = compiler.compile_view(
         Text(
             TextLine(
-                TextSpan("def", foreground_style="accent"),
-                TextSpan(" greet", background_style="#FFF2A8"),
+                TextSpan("def", foreground_style=AccentColor),
+                TextSpan(" greet", background_style=Color("#FFF2A8")),
                 TextSpan("(name):"),
-                background_style="surface",
+                background_style=SurfaceColor,
             ),
             flow="verbatim",
         ).frame(width=pt(240))
@@ -191,8 +202,8 @@ def test_structured_text_wraps_across_span_boundaries(compiler):
         Text(
             TextLine(
                 TextSpan("alpha "),
-                TextSpan("beta gamma", foreground_style="accent"),
-                background_style="surface",
+                TextSpan("beta gamma", foreground_style=AccentColor),
+                background_style=SurfaceColor,
             )
         ).frame(width=pt(70))
     )
@@ -215,9 +226,8 @@ def test_structured_text_wraps_across_span_boundaries(compiler):
 def test_editorial_is_an_example_subclass(font):
     theme = ClarityTheme()
     assert not hasattr(theme, "editorial")
+    assert not hasattr(theme, "typography")
     assert isinstance(EditorialTheme(), EditorialTheme)
-    with pytest.raises(TypeError):
-        theme.typography["title"] = TextStyle(Font("Test Font"), pt(100))
 
 
 @pytest.mark.parametrize(
@@ -225,4 +235,4 @@ def test_editorial_is_an_example_subclass(font):
 )
 def test_invalid_typography(size, spacing):
     with pytest.raises(ValueError):
-        TextStyle(Font("Test Font"), size, spacing)
+        Typography(Font("Test Font"), size, spacing)

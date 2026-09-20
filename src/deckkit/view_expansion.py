@@ -54,9 +54,8 @@ def expand_view(
             identity = parent.child(slot, view_type)
         environment = context.environment
         for modifier in value._modifiers:
-            if modifier[0] == "environment":
-                environment_key, setting = modifier[1]
-                environment = environment.setting(environment_key, setting)
+            if modifier[0] == "tokens":
+                environment = environment.with_tokens(modifier[1])
         local_context = replace(context, environment=environment)
         animation = mods.get("animation")
         transition = mods.get("transition")

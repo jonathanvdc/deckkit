@@ -2,13 +2,21 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from copy import copy
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Literal, TypeVar, Union
 
 from typing_extensions import Self
 
 from ..animation import Animation, Transition
-from ..context import EnvironmentKey, FontRoleKey, ForegroundStyleKey
+from ..theme import (
+    ColorStyle,
+    ForegroundColor,
+    TextStyle,
+    Typography,
+)
+from ..tokens import DesignToken, TokenAssignment
 from ..units import Length, pt
 
 if TYPE_CHECKING:
@@ -22,7 +30,7 @@ Modifier = Union[
     tuple[Literal["key"], str],
     tuple[Literal["animation"], Animation],
     tuple[Literal["transition"], Transition],
-    tuple[Literal["environment"], tuple[type[EnvironmentKey[Any]], Any]],
+    tuple[Literal["tokens"], Mapping[DesignToken[Any], TokenAssignment[Any]]],
     tuple[Literal["flex"], float],
     tuple[Literal["boundary"], bool],
 ]
@@ -39,14 +47,28 @@ class View:
     def key(self, value: str | int) -> Self:
         return self._with(("key", str(value)))
 
-    def environment(self, key: type[EnvironmentKey[T]], value: T) -> Self:
-        return self._with(("environment", (key, value)))
+    def token(self, token: DesignToken[T], assignment: TokenAssignment[T]) -> Self:
+        """Override one design token for this view subtree."""
+        return self.tokens({token: assignment})
 
-    def font(self, role: str) -> Self:
-        return self.environment(FontRoleKey, role)
+    def tokens(
+        self, overrides: Mapping[DesignToken[Any], TokenAssignment[Any]]
+    ) -> Self:
+        """Create a scoped group of design-token overrides."""
+        if not all(isinstance(token, DesignToken) for token in overrides):
+            raise TypeError("Token override keys must be DesignToken instances")
+        return self._with(("tokens", MappingProxyType(dict(overrides))))
 
-    def foreground_style(self, style: str) -> Self:
-        return self.environment(ForegroundStyleKey, style)
+    def font(self, style: DesignToken[Typography]) -> Self:
+        return self.token(TextStyle, TextStyle.alias(style))
+
+    def foreground_style(self, style: ColorStyle) -> Self:
+        override = (
+            ForegroundColor.alias(style)
+            if isinstance(style, DesignToken)
+            else ForegroundColor.set(style)
+        )
+        return self.token(ForegroundColor, override)
 
     @property
     def _layout_flex(self) -> float:

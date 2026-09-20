@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..context import Context, ForegroundStyleKey
+from ..context import Context
 from ..expanded_views import ExpandedMetadata, ExpandedRectangle
 from ..layouts import ShapeLayout
+from ..theme import ForegroundColor
 from ..units import Length, pt, require_length
 from .primitive_view import PrimitiveView
 
@@ -22,8 +23,6 @@ class Rectangle(PrimitiveView):
         return ExpandedRectangle(
             metadata,
             ShapeLayout(),
-            context.environment.theme.color(
-                context.environment.get(ForegroundStyleKey)
-            ),
+            context.environment[ForegroundColor].hex,
             self.corner_radius,
         )

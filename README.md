@@ -252,25 +252,19 @@ Core `Theme` has no editorial flag or built-in structural recipe. The example
 `examples.themes.EditorialTheme` subclasses it and overrides `render_semantic`.
 
 `ClarityTheme()` is a complete theme with an Aptos-based title/body/caption/metric
-scale. Font choices are part of the theme rather than constructor configuration.
-Customize them through ordinary subclassing:
+scale. Its foundational values feed a graph of computed design tokens. Changing the
+base font or accent therefore updates every derived token unless that particular
+token is explicitly overridden:
 
 ```python
 from deckkit.fonts import Font
-from deckkit.themes import ClarityTheme, TextStyle
+from deckkit.themes import AccentColor, ClarityTheme, TitleTextStyle
 
-
-class BrandTheme(ClarityTheme):
-    def text_style(self, role):
-        style = super().text_style(role)
-        return TextStyle(Font("Inter"), style.size, style.line_spacing)
-
-
-theme = BrandTheme()
+theme = ClarityTheme(font=Font("Inter"), accent="#C026D3")
 ```
 
-`.font("title")` selects the complete typography role; descendant overrides still
-win. Missing roles produce an actionable error.
+`.font(TitleTextStyle)` selects a strongly typed typography token; descendant
+overrides still win. Missing tokens produce an actionable error.
 
 Text can also contain styled spans and logical lines. The compiler resolves theme
 roles, measures runs, and wraps them within the proposed width; author code never
@@ -278,14 +272,15 @@ supplies text geometry. Span backgrounds cover the measured run, while a line
 background covers every visual line produced by wrapping:
 
 ```python
+from deckkit.themes import AccentColor, Color, SurfaceColor
 from deckkit.views import Text, TextLine, TextSpan
 
 source = Text(
     TextLine(
-        TextSpan("def", foreground_style="accent"),
-        TextSpan(" greet", background_style="#FFF2A8"),
+        TextSpan("def", foreground_style=AccentColor),
+        TextSpan(" greet", background_style=Color("#FFF2A8")),
         TextSpan("(name):"),
-        background_style="surface",
+        background_style=SurfaceColor,
     ),
     TextLine(TextSpan('    return f"Hello, {name}"')),
     flow="verbatim",
@@ -372,17 +367,76 @@ face survive in the scene. HarfBuzz and FreeType use the same file and collectio
 index. Font files are not embedded in SVG or PPTX; viewing machines need the fonts.
 
 
-## Theme contract and Clarity
+## Design tokens, themes, and Clarity
 
-`Theme` is an abstract design-system interface: subclasses implement `color(role)`
-and `text_style(role)`. It owns no palette, typography mapping or scale. Its optional
-`render_semantic` hook returns `None` by default, letting components use their own
-composition; this is fallback behavior, not a design recipe.
+Themes establish the root values of an open-ended, typed design-token graph. A token
+is self-describing: it has an identity, a value type, and optionally a computed default
+that resolves other tokens. Token identity is object-based, so applications and
+extension packages can add tokens without modifying `Theme` or a shared enum:
 
-The bundled `ClarityTheme` (`deckkit.themes.clarity`) supplies the original blue/teal
-palette and an Aptos-based title/body/caption/metric scale. The editorial example
-inherits from Clarity. Applications can subclass it to change the design or implement
-`Theme` directly without adopting Clarity's tokens or storage model.
+```python
+from deckkit.themes import AccentColor, Color, DesignToken, PrimaryColor
+
+CalloutBorder = DesignToken(
+    "acme.callout-border",
+    lambda values: values[AccentColor],
+)
+```
+
+`Environment` is the active token-resolution scope during view expansion. A view can
+override tokens for its subtree, and every downstream computed token is recomputed
+against that scope:
+
+```python
+muted = content.tokens(
+    {
+        AccentColor: AccentColor.set(Color("#77808A")),
+        PrimaryColor: PrimaryColor.set(Color("#4B5563")),
+    }
+)
+```
+
+Assignments may contain explicit values, aliases, or transformations of the inherited
+value:
+
+```python
+from dataclasses import replace
+
+from deckkit.units import pt
+from deckkit.views.semantic import CardStyleToken
+
+compact = card.token(
+    CardStyleToken,
+    CardStyleToken.derive(lambda style: replace(style, padding=pt(12))),
+)
+```
+
+Foundational tokens include the base fonts, base font size, type scale, spacing unit,
+radius scale, and semantic colors. Typography and built-in component styles are
+computed from those foundations. `Card`, `Pill`, `Metric`, `Pipeline`,
+`PipelineStage`, `BeforeAfter`, `SlideMargins`, and `TitleAndContent` retain their
+canonical compositions while reading their visual parameters from component-style
+tokens. Themes can override one component style without enumerating every component.
+
+Colors use normalized RGB channels rather than storing presentation-format strings.
+Hex conversion remains convenient, and colors can participate in computed defaults:
+
+```python
+dark = Color.from_hex("#183153")
+light = Color("#FFFFFF")
+surface = dark.mix(light, 0.9)
+assert surface.to_hex().startswith("#")
+```
+
+The bundled `ClarityTheme` supplies the blue/teal palette and Aptos-based defaults.
+Its optional `render_semantic` hook remains the structural escape hatch: it can replace
+a semantic component's canonical composition when token and component-style changes
+are insufficient. The editorial example demonstrates such a structural override.
+
+Themes provide strongly typed overrides directly through their constructor or
+`token_overrides()`. There is no parallel string-role API; foundational changes keep
+computed defaults live, while any individual semantic or component token can still
+be replaced explicitly.
 
 
 ## Decks

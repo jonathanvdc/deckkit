@@ -1,36 +1,16 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
+from typing import TYPE_CHECKING, Any, TypeVar
+
+from .tokens import DesignToken, TokenAssignment, TokenResolver
 
 if TYPE_CHECKING:
     from .theme import Theme
 
 T = TypeVar("T")
-
-
-class EnvironmentKey(ABC, Generic[T]):
-    """A typed, inheritable environment value with an owner-defined default."""
-
-    @classmethod
-    @abstractmethod
-    def default(cls) -> T:
-        raise NotImplementedError
-
-
-class FontRoleKey(EnvironmentKey[str]):
-    @classmethod
-    def default(cls) -> str:
-        return "body"
-
-
-class ForegroundStyleKey(EnvironmentKey[str]):
-    @classmethod
-    def default(cls) -> str:
-        return "primary"
 
 
 class State(Mapping[str, Any]):
@@ -53,21 +33,37 @@ class State(Mapping[str, Any]):
 
 @dataclass(frozen=True)
 class Environment:
-    """Inherited values available while evaluating a view subtree."""
+    """The active inherited design-token resolution scope."""
 
     theme: Theme
-    _values: Mapping[type[EnvironmentKey[Any]], Any] = field(default_factory=dict)
+    _tokens: TokenResolver | None = field(default=None, repr=False, compare=False)
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "_values", MappingProxyType(dict(self._values)))
+        if self._tokens is None:
+            object.__setattr__(self, "_tokens", self.theme.token_resolver())
 
-    def get(self, key: type[EnvironmentKey[T]]) -> T:
-        if key in self._values:
-            return cast(T, self._values[key])
-        return key.default()
+    def __getitem__(self, token: DesignToken[T]) -> T:
+        """Resolve a design token against this inherited scope."""
+        assert self._tokens is not None
+        return self._tokens[token]
 
-    def setting(self, key: type[EnvironmentKey[T]], value: T) -> Environment:
-        return Environment(self.theme, {**self._values, key: value})
+    def get(self, token: DesignToken[T]) -> T:
+        """Resolve a design token using method-call syntax."""
+        return self[token]
+
+    def with_token(
+        self, token: DesignToken[T], assignment: TokenAssignment[T]
+    ) -> Environment:
+        """Return a child scope with one token override."""
+        assert self._tokens is not None
+        return Environment(self.theme, self._tokens.with_token(token, assignment))
+
+    def with_tokens(
+        self, overrides: Mapping[DesignToken[Any], TokenAssignment[Any]]
+    ) -> Environment:
+        """Return a child scope with a group of token overrides."""
+        assert self._tokens is not None
+        return Environment(self.theme, self._tokens.with_tokens(overrides))
 
 
 @dataclass(frozen=True)

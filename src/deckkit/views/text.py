@@ -2,19 +2,21 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..context import Context, FontRoleKey, ForegroundStyleKey
+from ..context import Context
 from ..expanded_views import ExpandedMetadata, ExpandedText
 from ..layouts import TextLayout
 from ..measurement import StyledTextLine, StyledTextSpan, TextFlow
+from ..theme import Color, ColorStyle, ForegroundColor, TextStyle, Typography
+from ..tokens import DesignToken
 from .primitive_view import PrimitiveView
 
 
 @dataclass(frozen=True)
 class TextSpan:
     text: str
-    font_role: str | None = None
-    foreground_style: str | None = None
-    background_style: str | None = None
+    font_style: DesignToken[Typography] | None = None
+    foreground_style: ColorStyle | None = None
+    background_style: ColorStyle | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.text, str):
@@ -28,12 +30,12 @@ class TextSpan:
 @dataclass(frozen=True, init=False)
 class TextLine:
     spans: tuple[TextSpan, ...]
-    background_style: str | None
+    background_style: ColorStyle | None
 
     def __init__(
         self,
         *spans: TextSpan | str,
-        background_style: str | None = None,
+        background_style: ColorStyle | None = None,
     ) -> None:
         normalized = []
         for span in spans:
@@ -83,14 +85,21 @@ class Text(PrimitiveView):
 
     def _resolved_lines(self, context: Context) -> tuple[StyledTextLine, ...]:
         environment = context.environment
-        base_role = environment.get(FontRoleKey)
-        base_foreground = environment.get(ForegroundStyleKey)
+
+        def color(style: ColorStyle) -> str:
+            return (style if isinstance(style, Color) else environment[style]).hex
+
+        base_typography = environment[TextStyle]
+        base_foreground = environment[ForegroundColor]
         result = []
         for line in self.lines:
             spans = []
             for span in line.spans:
-                role = span.font_role or base_role
-                typography = environment.theme.text_style(role)
+                typography = (
+                    environment[span.font_style]
+                    if span.font_style is not None
+                    else base_typography
+                )
                 foreground = span.foreground_style or base_foreground
                 spans.append(
                     StyledTextSpan(
@@ -98,8 +107,8 @@ class Text(PrimitiveView):
                         typography.font,
                         typography.size,
                         typography.line_spacing,
-                        environment.theme.color(foreground),
-                        environment.theme.color(span.background_style)
+                        color(foreground),
+                        color(span.background_style)
                         if span.background_style is not None
                         else None,
                     )
@@ -107,7 +116,7 @@ class Text(PrimitiveView):
             result.append(
                 StyledTextLine(
                     tuple(spans),
-                    environment.theme.color(line.background_style)
+                    color(line.background_style)
                     if line.background_style is not None
                     else None,
                 )

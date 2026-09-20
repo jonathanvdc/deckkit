@@ -162,24 +162,17 @@ Core `Theme` has no editorial flag or built-in structural recipe. The example
 
 `ClarityTheme()` is a complete theme with an Aptos-based title/body/caption/metric
 scale. Font choices are part of the theme rather than constructor configuration.
-Customize them through ordinary subclassing:
+Customize them through foundational or role-specific token overrides:
 
 ```python
 from deckkit.fonts import Font
-from deckkit.themes import ClarityTheme, TextStyle
+from deckkit.themes import ClarityTheme
 
-
-class BrandTheme(ClarityTheme):
-    def text_style(self, role):
-        style = super().text_style(role)
-        return TextStyle(Font("Inter"), style.size, style.line_spacing)
-
-
-theme = BrandTheme()
+theme = ClarityTheme(font=Font("Inter"))
 ```
 
-`.font("title")` selects the complete typography role; descendant overrides still
-win. Missing roles produce an actionable error.
+`.font(TitleTextStyle)` selects the complete, strongly typed typography token;
+descendant overrides still win. Missing tokens produce an actionable error.
 
 
 ## Font resolution

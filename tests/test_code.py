@@ -4,7 +4,14 @@ import pytest
 
 from deckkit.expanded_views import ExpandedText
 from deckkit.theme import CodeTokenStyle
-from deckkit.themes import ClarityTheme
+from deckkit.themes import (
+    AccentColor,
+    ClarityTheme,
+    Color,
+    MutedColor,
+    PrimaryColor,
+    SurfaceColor,
+)
 from deckkit.units import pt
 from deckkit.views import Code, CodeLine, CodeSpan, PygmentsHighlighter
 from deckkit.views.semantic import CodeBlock
@@ -14,10 +21,12 @@ def test_code_resolves_cascading_language_token_scopes(compiler):
     class CodeTheme(ClarityTheme):
         code_styles = MappingProxyType(
             {
-                "plain": CodeTokenStyle(foreground_style="primary"),
-                "keyword": CodeTokenStyle(foreground_style="muted"),
-                "keyword.declaration": CodeTokenStyle(background_style="#FFF2A8"),
-                "python.keyword": CodeTokenStyle(foreground_style="accent"),
+                "plain": CodeTokenStyle(foreground_style=PrimaryColor),
+                "keyword": CodeTokenStyle(foreground_style=MutedColor),
+                "keyword.declaration": CodeTokenStyle(
+                    background_style=Color("#FFF2A8")
+                ),
+                "python.keyword": CodeTokenStyle(foreground_style=AccentColor),
             }
         )
 
@@ -28,7 +37,7 @@ def test_code_resolves_cascading_language_token_scopes(compiler):
                 CodeSpan("def", token="keyword.declaration"),
                 " ",
                 CodeSpan("greet", token="name.function"),
-                background_style="surface",
+                background_style=SurfaceColor,
             ),
             language="python",
         )

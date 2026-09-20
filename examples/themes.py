@@ -1,6 +1,12 @@
 from __future__ import annotations
 
-from deckkit.themes import ClarityTheme
+from deckkit.themes import (
+    AccentColor,
+    ClarityTheme,
+    MutedColor,
+    SurfaceColor,
+    TitleTextStyle,
+)
 from deckkit.units import pt
 from deckkit.views import (
     Context,
@@ -21,16 +27,16 @@ class EditorialTheme(ClarityTheme):
             return component.content.padding(pt(48))
         if isinstance(component, TitleAndContent):
             return VStack(
-                component.title.font("title"),
+                component.title.font(TitleTextStyle),
                 component.content,
                 spacing=pt(40),
             )
         if isinstance(component, BeforeAfter):
             comparison = ZStack(
-                Rectangle().foreground_style("surface"),
+                Rectangle().foreground_style(SurfaceColor),
                 VStack(
-                    component.before.foreground_style("muted"),
-                    component.after.font("title").foreground_style("accent"),
+                    component.before.foreground_style(MutedColor),
+                    component.after.font(TitleTextStyle).foreground_style(AccentColor),
                     spacing=pt(32),
                 ).padding(pt(28)),
             )

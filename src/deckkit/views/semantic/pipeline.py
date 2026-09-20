@@ -8,11 +8,26 @@ from typing import cast
 from ...annotations import Anchor, Annotated, Annotation, Connector
 from ...context import Context
 from ...geometry import RelativePoint
-from ...units import Length, pt, require_length
+from ...theme import Color, ColorStyle, PrimaryColor, SpacingUnit
+from ...tokens import DesignToken
+from ...units import Length, require_length
 from ..hstack import HStack
 from ..view import View
 from .pipeline_stage import PipelineStage
 from .semantic_view import SemanticView
+
+
+@dataclass(frozen=True)
+class PipelineStyle:
+    spacing: Length
+    connector: DesignToken[Color]
+
+
+PipelineStyleToken = DesignToken[PipelineStyle](
+    "component.pipeline",
+    lambda values: PipelineStyle(values[SpacingUnit] * 8, PrimaryColor),
+    value_type=PipelineStyle,
+)
 
 
 @dataclass(frozen=True, init=False)
@@ -36,16 +51,16 @@ class Pipeline(SemanticView):
     """
 
     stages: tuple[PipelineStage, ...]
-    spacing: Length
+    spacing: Length | None
     annotations: tuple[Annotation, ...]
-    connector_style: str
+    connector_style: ColorStyle | None
 
     def __init__(
         self,
         *stages: PipelineStage,
-        spacing: Length = pt(32),
+        spacing: Length | None = None,
         annotations: tuple[Annotation, ...] = (),
-        connector_style: str = "primary",
+        connector_style: ColorStyle | None = None,
     ) -> None:
         if not stages:
             raise ValueError("Pipeline requires at least one PipelineStage")
@@ -53,9 +68,10 @@ class Pipeline(SemanticView):
             raise TypeError("Pipeline children must be PipelineStage instances")
         if not all(isinstance(annotation, Annotation) for annotation in annotations):
             raise TypeError("Pipeline annotations must inherit Annotation")
-        require_length(spacing)
-        if spacing.points < 0:
-            raise ValueError("Pipeline spacing must be non-negative")
+        if spacing is not None:
+            require_length(spacing)
+            if spacing.points < 0:
+                raise ValueError("Pipeline spacing must be non-negative")
         object.__setattr__(self, "stages", tuple(stages))
         object.__setattr__(self, "spacing", spacing)
         object.__setattr__(self, "annotations", tuple(annotations))
@@ -63,6 +79,7 @@ class Pipeline(SemanticView):
 
     def body(self, context: Context) -> View:
         """Arrange stages horizontally and connect adjacent stage anchors."""
+        style = context.environment[PipelineStyleToken]
         keyed_stages: list[PipelineStage] = []
         keys: list[str] = []
         for index, stage in enumerate(self.stages):
@@ -75,12 +92,18 @@ class Pipeline(SemanticView):
             keys.append(key)
             keyed_stages.append(stage if "key" in modifiers else stage.key(key))
 
-        content: View = HStack(*keyed_stages, spacing=self.spacing)
+        spacing = self.spacing if self.spacing is not None else style.spacing
+        connector_style = (
+            self.connector_style
+            if self.connector_style is not None
+            else style.connector
+        )
+        content: View = HStack(*keyed_stages, spacing=spacing)
         connectors = tuple(
             Connector(
                 Anchor(start, RelativePoint.right),
                 Anchor(end, RelativePoint.left),
-                style=self.connector_style,
+                style=connector_style,
             )
             for start, end in zip(keys, keys[1:])
         )

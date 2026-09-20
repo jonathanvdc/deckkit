@@ -5,6 +5,14 @@ from dataclasses import dataclass
 from deckkit.animation import Animation, FallbackPolicy, SlideTimeline, Transition
 from deckkit.annotations import Anchor, Connector, Label
 from deckkit.geometry import RelativePoint
+from deckkit.themes import (
+    AccentColor,
+    BodyTextStyle,
+    CaptionTextStyle,
+    MutedColor,
+    PrimaryColor,
+    SurfaceColor,
+)
 from deckkit.units import pt
 from deckkit.views import (
     Code,
@@ -68,8 +76,8 @@ class CodeSlide(TitleAndContentSlide):
                 )
             ).frame(width=pt(760)),
             Text("Token scopes resolve through the active theme.")
-            .font("caption")
-            .foreground_style("muted"),
+            .font(CaptionTextStyle)
+            .foreground_style(MutedColor),
             spacing=pt(28),
         )
 
@@ -86,22 +94,24 @@ class PipelineSlide(TitleAndContentSlide):
         step = context.state.get("step", 0)
         return VStack(
             Pipeline(
-                PipelineStage(Text("Parse"), "primary" if step == 0 else "muted").key(
-                    "parse"
-                ),
                 PipelineStage(
-                    Text("Optimize"), "primary" if step == 1 else "muted"
+                    Text("Parse"), PrimaryColor if step == 0 else MutedColor
+                ).key("parse"),
+                PipelineStage(
+                    Text("Optimize"), PrimaryColor if step == 1 else MutedColor
                 ).key("opt"),
                 annotations=(
                     Connector(
                         Anchor("opt", RelativePoint.bottom),
                         Anchor("result-label", RelativePoint.top),
                         end_cap="none",
-                        style="accent",
+                        style=AccentColor,
                     ),
                     Label(
                         Anchor("opt", RelativePoint.bottom, offset_y=pt(24)),
-                        Text("Final IR").key("result-label").foreground_style("accent"),
+                        Text("Final IR")
+                        .key("result-label")
+                        .foreground_style(AccentColor),
                         alignment=RelativePoint.center,
                     ),
                 ),
@@ -121,8 +131,8 @@ class Chart(CompositeView):
 
     def body(self, context):
         return ZStack(
-            Rectangle(corner_radius=pt(16)).foreground_style("surface"),
-            Text("Compilation throughput").font("body"),
+            Rectangle(corner_radius=pt(16)).foreground_style(SurfaceColor),
+            Text("Compilation throughput").font(BodyTextStyle),
         ).frame(height=pt(230))
 
 

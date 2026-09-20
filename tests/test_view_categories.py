@@ -11,12 +11,16 @@ from deckkit.expanded_views import (
     ExpandedText,
 )
 from deckkit.layouts import ShapeLayout
+from deckkit.themes import (
+    AccentColor,
+    DesignToken,
+    ForegroundColor,
+    TextStyle,
+    TitleTextStyle,
+)
 from deckkit.views import (
     CompositeView,
     Context,
-    EnvironmentKey,
-    FontRoleKey,
-    ForegroundStyleKey,
     HStack,
     Image,
     LayoutView,
@@ -90,35 +94,39 @@ def test_composite_and_primitive_share_inherited_environment(compiler):
         def body(self, context: Context) -> View:
             observed.append(
                 (
-                    context.environment.get(FontRoleKey),
-                    context.environment.get(ForegroundStyleKey),
+                    context.environment[TextStyle],
+                    context.environment[ForegroundColor],
                 )
             )
             return Text("Hello")
 
-    result = compiler.compile_view(Greeting().font("title").foreground_style("accent"))
+    result = compiler.compile_view(
+        Greeting().font(TitleTextStyle).foreground_style(AccentColor)
+    )
     text = result.expanded_tree.children[0]
 
-    assert observed == [("title", "accent")]
+    assert observed == [
+        (
+            compiler.environment[TitleTextStyle],
+            compiler.environment[AccentColor],
+        )
+    ]
     assert isinstance(text, ExpandedText)
     span = text.styled_lines[0].spans[0]
-    assert span.color == compiler.environment.theme.color("accent")
+    assert span.color == compiler.environment[AccentColor].hex
 
 
 def test_custom_environment_modifier_reaches_subtree(compiler):
-    class DensityKey(EnvironmentKey[int]):
-        @classmethod
-        def default(cls) -> int:
-            return 1
+    density = DesignToken[int]("test.density", lambda values: 1)
 
     observed = []
 
     class ReadsDensity(CompositeView):
         def body(self, context: Context) -> View:
-            observed.append(context.environment.get(DensityKey))
+            observed.append(context.environment[density])
             return Text("Density")
 
-    compiler.compile_view(ReadsDensity().environment(DensityKey, 2))
+    compiler.compile_view(ReadsDensity().token(density, density.set(2)))
 
     assert observed == [2]
 
@@ -164,15 +172,13 @@ def test_custom_primitive_expands_polymorphically(compiler):
             return ExpandedBadge(
                 metadata,
                 ShapeLayout(),
-                context.environment.theme.color(
-                    context.environment.get(ForegroundStyleKey)
-                ),
+                context.environment[ForegroundColor].hex,
             )
 
-    result = compiler.compile_view(Badge().foreground_style("accent"))
+    result = compiler.compile_view(Badge().foreground_style(AccentColor))
 
     assert isinstance(result.expanded_tree, ExpandedBadge)
-    assert result.expanded_tree.color == compiler.environment.theme.color("accent")
+    assert result.expanded_tree.color == compiler.environment[AccentColor].hex
 
 
 def test_invalid_composite_body_has_explicit_error(compiler):

@@ -12,7 +12,7 @@ from deckkit.fonts import (
     SystemFontResolver,
 )
 from deckkit.measurement import PillowMeasurer
-from deckkit.themes import ClarityTheme, TextStyle
+from deckkit.themes import ClarityTheme
 from deckkit.units import pt
 from deckkit.views import Text
 
@@ -67,14 +67,9 @@ def test_exports_use_resolved_family_not_file_alias(font, tmp_path):
     request = Font("Build font")
     resolver = FileFontResolver({request: font})
 
-    class BuildTheme(ClarityTheme):
-        def text_style(self, role):
-            style = super().text_style(role)
-            return TextStyle(request, style.size, style.line_spacing)
-
-    compiled = Compiler(BuildTheme(), font_resolver=resolver).compile_view(
-        Text("Hello")
-    )
+    compiled = Compiler(
+        ClarityTheme(font=request), font_resolver=resolver
+    ).compile_view(Text("Hello"))
     layout = compiled.drawable
     face = resolver.resolve(request)
     assert layout.children[0].requested_font == request

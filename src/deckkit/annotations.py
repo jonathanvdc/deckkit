@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Callable, Literal
 
-from .context import Context, ForegroundStyleKey
+from .context import Context
 from .expanded_views import ExpandedConnector, ExpandedMetadata
 from .geometry import RelativePoint
 from .identity import ViewIdentity
@@ -17,6 +17,7 @@ from .layouts.annotations import (
     ResolvedConnector,
     ResolvedLabel,
 )
+from .theme import ColorStyle, ForegroundColor, PrimaryColor
 from .units import Length, pt, require_length
 from .views.layout_view import LayoutView
 from .views.primitive_view import PrimitiveView
@@ -65,9 +66,7 @@ class _Connector(PrimitiveView):
         return ExpandedConnector(
             metadata,
             ConnectorLayout(),
-            context.environment.theme.color(
-                context.environment.get(ForegroundStyleKey)
-            ),
+            context.environment[ForegroundColor].hex,
             self.start_cap,
             self.end_cap,
         )
@@ -79,7 +78,7 @@ class Connector(Annotation):
     end: Anchor
     start_cap: Literal["none", "arrow"] = "none"
     end_cap: Literal["none", "arrow"] = "arrow"
-    style: str = "primary"
+    style: ColorStyle = PrimaryColor
 
     @property
     def view(self) -> View:

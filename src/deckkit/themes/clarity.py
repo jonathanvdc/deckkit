@@ -2,51 +2,65 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from types import MappingProxyType
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from ..fonts import Font
-from ..theme import CodeTokenStyle, TextStyle, Theme
+from ..theme import (
+    AccentColor,
+    BaseFont,
+    BaseFontSize,
+    CodeFont,
+    CodeTokenStyle,
+    Color,
+    LineSpacing,
+    MutedColor,
+    OnAccentColor,
+    PrimaryColor,
+    SpacingUnit,
+    SurfaceColor,
+    Theme,
+)
+from ..tokens import DesignToken, TokenAssignment
 from ..units import pt
 
 
 class ClarityTheme(Theme):
     """A restrained blue/teal design system with a four-role type scale."""
 
-    typography: ClassVar[Mapping[str, TextStyle]] = MappingProxyType(
-        {
-            "title": TextStyle(Font("Aptos"), pt(32)),
-            "body": TextStyle(Font("Aptos"), pt(20)),
-            "caption": TextStyle(Font("Aptos"), pt(16)),
-            "metric": TextStyle(Font("Aptos"), pt(46)),
-            "code": TextStyle(Font("Aptos Mono"), pt(18)),
-        }
-    )
-
     code_styles: ClassVar[Mapping[str, CodeTokenStyle]] = MappingProxyType(
         {
-            "comment": CodeTokenStyle(foreground_style="muted"),
-            "keyword": CodeTokenStyle(foreground_style="accent"),
-            "literal.string": CodeTokenStyle(foreground_style="accent"),
+            "comment": CodeTokenStyle(foreground_style=MutedColor),
+            "keyword": CodeTokenStyle(foreground_style=AccentColor),
+            "literal.string": CodeTokenStyle(foreground_style=AccentColor),
         }
     )
 
-    def text_style(self, role: str) -> TextStyle:
-        try:
-            return self.typography[role]
-        except KeyError:
-            raise ValueError(
-                f"Unknown typography role {role!r}; define it in ClarityTheme.typography"
-            ) from None
-
-    def color(self, role: str) -> str:
-        colors = {
-            "primary": "#183153",
-            "muted": "#7D8998",
-            "surface": "#E8EEF5",
-            "accent": "#087F8C",
-            "white": "#FFFFFF",
+    def __init__(
+        self,
+        overrides: Mapping[DesignToken[Any], TokenAssignment[Any]] | None = None,
+        *,
+        font: Font | None = None,
+        code_font: Font | None = None,
+        accent: Color | str | None = None,
+    ) -> None:
+        values: dict[DesignToken[Any], TokenAssignment[Any]] = {
+            BaseFont: BaseFont.set(Font("Aptos")),
+            CodeFont: CodeFont.set(Font("Aptos Mono")),
+            BaseFontSize: BaseFontSize.set(pt(20)),
+            LineSpacing: LineSpacing.set(1.1),
+            SpacingUnit: SpacingUnit.set(pt(4)),
+            PrimaryColor: PrimaryColor.set(Color("#183153")),
+            MutedColor: MutedColor.set(Color("#7D8998")),
+            SurfaceColor: SurfaceColor.set(Color("#E8EEF5")),
+            AccentColor: AccentColor.set(Color("#087F8C")),
+            OnAccentColor: OnAccentColor.set(Color("#FFFFFF")),
         }
-        if role.startswith("#") and len(role) == 7:
-            int(role[1:], 16)
-            return role
-        return colors[role]
+        values.update(overrides or {})
+        if font is not None:
+            values[BaseFont] = BaseFont.set(font)
+        if code_font is not None:
+            values[CodeFont] = CodeFont.set(code_font)
+        if accent is not None:
+            color = accent if isinstance(accent, Color) else Color(accent)
+            values[AccentColor] = AccentColor.set(color)
+        super().__init__(values)

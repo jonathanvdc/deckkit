@@ -3,9 +3,6 @@
 from ..context import (
     Context,
     Environment,
-    EnvironmentKey,
-    FontRoleKey,
-    ForegroundStyleKey,
     State,
 )
 from .code import Code, CodeHighlighter, CodeLine, CodeSpan
@@ -26,9 +23,6 @@ __all__ = [
     "Edge",
     "EdgeSet",
     "Environment",
-    "EnvironmentKey",
-    "FontRoleKey",
-    "ForegroundStyleKey",
     "FrameSpec",
     "HStack",
     "Image",

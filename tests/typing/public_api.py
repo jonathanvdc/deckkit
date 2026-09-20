@@ -12,6 +12,7 @@ from deckkit import CompiledDeck, CompiledSlide, CompiledView, Compiler, Deck
 from deckkit.animation import Animation, SlideTimeline
 from deckkit.annotations import Anchor, Annotated, Connector
 from deckkit.drawables import Drawable
+from deckkit.fonts import Font
 from deckkit.geometry import RelativePoint
 from deckkit.identity import ViewIdentity
 from deckkit.layout import (
@@ -22,7 +23,14 @@ from deckkit.layout import (
     Placement,
     ProposedSize,
 )
-from deckkit.themes import CodeTokenStyle, Theme
+from deckkit.themes import (
+    AccentColor,
+    BaseFont,
+    CodeTokenStyle,
+    DesignToken,
+    Theme,
+    TitleTextStyle,
+)
 from deckkit.units import Length, cm, inch, pt
 from deckkit.views import (
     Code,
@@ -31,7 +39,6 @@ from deckkit.views import (
     CodeSpan,
     CompositeView,
     Context,
-    EnvironmentKey,
     HStack,
     LayoutView,
     PygmentsHighlighter,
@@ -76,10 +83,7 @@ class CustomLayoutView(LayoutView):
         return self.policy
 
 
-class CustomEnvironmentKey(EnvironmentKey[int]):
-    @classmethod
-    def default(cls) -> int:
-        return 0
+CustomEnvironmentValue = DesignToken[int]("custom.environment-value", lambda values: 0)
 
 
 class CustomView(CompositeView):
@@ -97,22 +101,31 @@ class CustomSlide(Slide):
 
 
 def check_api(compiler: Compiler) -> None:
-    assert_type(compiler.environment.get(CustomEnvironmentKey), int)
-    text = Text("Hello").font("title").padding().frame(width=pt(100)).key("title")
+    assert_type(compiler.environment[CustomEnvironmentValue], int)
+    custom_spacing = DesignToken[Length]("custom.spacing", lambda values: pt(4))
+    assert_type(compiler.environment[custom_spacing], Length)
+    assert_type(compiler.environment[BaseFont], Font)
+    text = (
+        Text("Hello").font(TitleTextStyle).padding().frame(width=pt(100)).key("title")
+    )
     assert_type(text, View)
     assert_type(Text("    code", flow="verbatim"), Text)
     assert_type(
         Text(
             TextLine(
-                TextSpan("def", foreground_style="accent"),
+                TextSpan("def", foreground_style=AccentColor),
                 TextSpan(" greet(name):"),
             ),
             flow="verbatim",
         ),
         Text,
     )
-    assert_type(Text("Custom").environment(CustomEnvironmentKey, 1), Text)
-    Text("Invalid").environment(CustomEnvironmentKey, "wrong")  # type: ignore[misc]
+    assert_type(
+        Text("Custom").token(CustomEnvironmentValue, CustomEnvironmentValue.set(1)),
+        Text,
+    )
+    assert_type(Text("Themed").token(custom_spacing, custom_spacing.set(pt(8))), Text)
+    Text("Invalid").token(CustomEnvironmentValue, CustomEnvironmentValue.set("wrong"))  # type: ignore[arg-type]
     assert_type(
         Metric(Text("2.7×"), Text("Throughput")).animation(Animation.smooth()),
         Metric,
@@ -129,7 +142,7 @@ def check_api(compiler: Compiler) -> None:
         ),
         Code,
     )
-    assert_type(CodeTokenStyle(foreground_style="accent"), CodeTokenStyle)
+    assert_type(CodeTokenStyle(foreground_style=AccentColor), CodeTokenStyle)
     assert_type(CodeBlock(Code("print('hello')")), CodeBlock)
     highlighter: CodeHighlighter = PygmentsHighlighter()
     assert_type(

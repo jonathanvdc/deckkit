@@ -5,9 +5,17 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ...context import Context
-from ...units import pt
+from ...theme import SpacingUnit
+from ...tokens import DesignToken
+from ...units import Length
 from ..semantic.semantic_view import SemanticView
 from ..view import View
+
+SlideMargin = DesignToken[Length](
+    "component.slide-margin",
+    lambda values: values[SpacingUnit] * 10,
+    value_type=Length,
+)
 
 
 @dataclass(frozen=True)
@@ -21,4 +29,4 @@ class SlideMargins(SemanticView):
             raise TypeError("SlideMargins.content must be a View")
 
     def body(self, context: Context) -> View:
-        return self.content.padding(pt(40))
+        return self.content.padding(context.environment[SlideMargin])
