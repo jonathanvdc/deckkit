@@ -15,7 +15,7 @@ from .semantic_view import StyledSemanticView
 
 
 @dataclass(frozen=True)
-class PipelineStage(StyledSemanticView):
+class PipelineStage(StyledSemanticView["PipelineStage.Style"]):
     """Display a labeled stage suitable for use in a :class:`Pipeline`.
 
     Args:

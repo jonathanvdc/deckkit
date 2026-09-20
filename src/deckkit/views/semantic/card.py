@@ -24,7 +24,7 @@ from .semantic_view import StyledSemanticView
 
 
 @dataclass(frozen=True)
-class Card(StyledSemanticView):
+class Card(StyledSemanticView["Card.Style"]):
     """Place arbitrary content at the top-left edge of a padded surface."""
 
     @dataclass(frozen=True)

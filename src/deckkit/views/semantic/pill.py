@@ -22,7 +22,7 @@ from .semantic_view import StyledSemanticView
 
 
 @dataclass(frozen=True)
-class Pill(StyledSemanticView):
+class Pill(StyledSemanticView["Pill.Style"]):
     """Display arbitrary content over a capsule-shaped background.
 
     Args:

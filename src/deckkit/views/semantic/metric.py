@@ -21,7 +21,7 @@ from .semantic_view import StyledSemanticView
 
 
 @dataclass(frozen=True)
-class Metric(StyledSemanticView):
+class Metric(StyledSemanticView["Metric.Style"]):
     """Emphasize a value together with a short descriptive label.
 
     Both slots accept arbitrary :class:`~deckkit.views.View` values. The default

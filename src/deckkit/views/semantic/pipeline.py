@@ -18,7 +18,7 @@ from .semantic_view import StyledSemanticView
 
 
 @dataclass(frozen=True, init=False)
-class Pipeline(StyledSemanticView):
+class Pipeline(StyledSemanticView["Pipeline.Style"]):
     """Lay out pipeline stages and connect each adjacent pair.
 
     Stages are assigned stable generated keys unless they already have explicit

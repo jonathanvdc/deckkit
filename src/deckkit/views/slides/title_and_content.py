@@ -14,7 +14,7 @@ from ..vstack import VStack
 
 
 @dataclass(frozen=True)
-class TitleAndContent(StyledSemanticView):
+class TitleAndContent(StyledSemanticView["TitleAndContent.Style"]):
     """A title followed by content."""
 
     @dataclass(frozen=True)

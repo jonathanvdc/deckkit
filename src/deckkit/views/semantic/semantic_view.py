@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC
 from collections.abc import Callable
-from typing import Any
+from typing import Generic, TypeVar
 
 from typing_extensions import Self
 
@@ -12,6 +12,8 @@ from ...context import Context
 from ...tokens import DesignToken
 from ..composite_view import CompositeView
 from ..view import View
+
+StyleT = TypeVar("StyleT")
 
 
 class SemanticView(CompositeView, ABC):
@@ -30,15 +32,15 @@ class SemanticView(CompositeView, ABC):
         return recipe
 
 
-class StyledSemanticView(SemanticView, ABC):
+class StyledSemanticView(SemanticView, Generic[StyleT]):
     """A semantic component with a scoped, replaceable style token."""
 
-    style_token: DesignToken[Any]
+    style_token: DesignToken[StyleT]
 
-    def with_style(self, style: object) -> Self:
+    def with_style(self, style: StyleT) -> Self:
         """Replace this component's style within its view subtree."""
         return self.with_token(self.style_token, self.style_token.set(style))
 
-    def transform_style(self, transform: Callable[[Any], Any]) -> Self:
+    def transform_style(self, transform: Callable[[StyleT], StyleT]) -> Self:
         """Derive this component's style from the inherited style."""
         return self.with_token(self.style_token, self.style_token.derive(transform))

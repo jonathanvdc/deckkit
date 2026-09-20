@@ -26,7 +26,7 @@ from .semantic_view import StyledSemanticView
 
 
 @dataclass(frozen=True)
-class BeforeAfter(StyledSemanticView):
+class BeforeAfter(StyledSemanticView["BeforeAfter.Style"]):
     """Present two states side by side with a concluding takeaway.
 
     All three content slots accept arbitrary :class:`~deckkit.views.View` values,
