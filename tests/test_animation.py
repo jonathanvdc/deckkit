@@ -147,6 +147,8 @@ def test_pptx_sequence_contains_union_shapes_and_native_timing(compiler, tmp_pat
     assert 'nodeType="clickEffect"' in slide
     assert '<p:animEffect transition="out" filter="fade">' in slide
     assert "<p:animMotion" in slide
+    assert 'presetID="42" presetClass="path"' in slide
+    assert 'pathEditMode="relative" ptsTypes=""' in slide
     assert "key:b:" in slide
     assert 'presetID="10" presetClass="exit" presetSubtype="0"' in slide
     assert 'evt="onPrev"' in slide and 'evt="onNext"' in slide
@@ -207,6 +209,41 @@ def test_results_slide_resizes_chart_discretely(compiler):
     assert chart_rectangle.kind is PptxBehaviorKind.DISCRETE
     assert chart_label.kind is PptxBehaviorKind.MOTION
     assert not planned.diagnostics
+
+
+def test_pptx_replacement_background_stays_below_unchanged_label(
+    compiler, tmp_path
+):
+    from lxml import etree
+
+    from deckkit.backends import pptx
+    from examples.api_sketch import ResultsSlide
+
+    compiled = compiler.compile_slide(ResultsSlide())
+    output = tmp_path / "results.pptx"
+    pptx.render(CompiledDeck((compiled,)), output)
+
+    with ZipFile(output) as archive:
+        root = etree.fromstring(archive.read("ppt/slides/slide1.xml"))
+
+    namespaces = {
+        "a": "http://schemas.openxmlformats.org/drawingml/2006/main",
+        "p": "http://schemas.openxmlformats.org/presentationml/2006/main",
+    }
+    shapes = root.xpath("./p:cSld/p:spTree/p:sp", namespaces=namespaces)
+    replacement_index = next(
+        index
+        for index, shape in enumerate(shapes)
+        if "#build-1" in shape.xpath("string(p:nvSpPr/p:cNvPr/@name)", namespaces=namespaces)
+        and not shape.xpath(".//a:t", namespaces=namespaces)
+    )
+    label_index = next(
+        index
+        for index, shape in enumerate(shapes)
+        if shape.xpath("string(.//a:t)", namespaces=namespaces)
+        == "Compilation throughput"
+    )
+    assert replacement_index < label_index
 
 
 def test_animation_boundary_stops_ancestor_animation(compiler):

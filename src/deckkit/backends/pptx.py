@@ -181,6 +181,39 @@ def _pptx_nodes(root: Drawable) -> list[Drawable]:
     return result
 
 
+def _place_shape_in_state_z_order(
+    slide: Any,
+    shape: Any,
+    identity: str,
+    state: Drawable,
+    shape_ids: dict[tuple[str, int], int],
+) -> None:
+    """Place an added animation version below later leaves in its state.
+
+    PowerPoint uses document order as z-order. Replacement shapes are created
+    after the initial-state shapes, so leaving them appended can put an opaque
+    replacement background above unchanged foreground content.
+    """
+    order = [
+        node.identity
+        for node in _pptx_nodes(state)
+        if isinstance(node, DrawableRichText) or not node.children
+    ]
+    try:
+        following = set(order[order.index(identity) + 1 :])
+    except ValueError:
+        return
+    following_shape_ids = {
+        shape_id
+        for (candidate_identity, _), shape_id in shape_ids.items()
+        if candidate_identity in following
+    }
+    for candidate in slide.shapes:
+        if candidate.shape_id in following_shape_ids:
+            candidate._element.addprevious(shape._element)
+            return
+
+
 def _element(name: str, **attributes: object) -> Any:
     from pptx.oxml.xmlchemy import OxmlElement
 
@@ -249,6 +282,7 @@ def _effect_elements(
             origin="layout",
             path=f"M 0 0 L {dx:g} {dy:g} E",
             pathEditMode="relative",
+            ptsTypes="",
         )
         node_id = _common_behavior(result, node_id, duration, shape_id)
         behavior = result.find(
@@ -280,6 +314,11 @@ def _effect_elements(
 
 
 def _preset(kind: PptxBehaviorKind) -> tuple[int | None, str | None]:
+    if kind is PptxBehaviorKind.MOTION:
+        # PowerPoint classifies native motion effects separately from generic
+        # behaviors. Without the path preset metadata, clients can retain the
+        # timing row but ignore the animMotion payload during playback.
+        return 42, "path"
     if kind in (PptxBehaviorKind.FADE_IN, PptxBehaviorKind.FADE_OUT):
         return 10, "exit" if kind is PptxBehaviorKind.FADE_OUT else "entr"
     if kind in (PptxBehaviorKind.APPEAR, PptxBehaviorKind.DISAPPEAR):
@@ -489,5 +528,12 @@ def _render_slide(prs: Any, compiled_slide: CompiledSlide) -> None:
                     name=f"{effect.identity}#build-{build_index}",
                 )
                 shape_ids[(effect.identity, build_index)] = shape.shape_id
+                _place_shape_in_state_z_order(
+                    slide,
+                    shape,
+                    effect.identity,
+                    compiled_slide.states[build_index].drawable,
+                    shape_ids,
+                )
 
     _append_timing(slide, compiled_slide, shape_ids)
