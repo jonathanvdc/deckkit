@@ -134,9 +134,7 @@ def test_pill_accepts_any_view_and_before_after_uses_pills(compiler):
     assert background.color == "#E8EEF5"
     assert background.corner_radius == pt(18)
 
-    comparison = compiler.compile_view(
-        BeforeAfter(Text("Old"), Text("New"))
-    )
+    comparison = compiler.compile_view(BeforeAfter(Text("Old"), Text("New")))
     assert (
         sum(
             1
