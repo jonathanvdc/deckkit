@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from ...context import Context
 from ...theme import (
     Color,
-    ColorStyle,
     PrimaryColor,
     RadiusScale,
     SpacingUnit,
@@ -27,8 +26,6 @@ class Pill(StyledSemanticView["Pill.Style"]):
 
     Args:
         content: View displayed inside the pill.
-        background_style: Theme color role used for the capsule.
-        content_style: Theme color role inherited by the content.
     """
 
     @dataclass(frozen=True)
@@ -52,8 +49,6 @@ class Pill(StyledSemanticView["Pill.Style"]):
     )
 
     content: View
-    background_style: ColorStyle | None = None
-    content_style: ColorStyle | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.content, View):
@@ -64,9 +59,7 @@ class Pill(StyledSemanticView["Pill.Style"]):
         style = context.environment[self.style_token]
         return ZStack(
             Rectangle(corner_radius=style.corner_radius).foreground_style(
-                self.background_style or style.background
+                style.background
             ),
-            self.content.foreground_style(
-                self.content_style or style.foreground
-            ).padding(style.padding),
+            self.content.foreground_style(style.foreground).padding(style.padding),
         )

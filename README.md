@@ -219,8 +219,8 @@ an `isinstance` dispatch chain.
 `Metric.value`, `Metric.label`, `Pill.content`, `Card.content`, `PipelineStage.label`, and every
 `BeforeAfter` content slot requires views; wrap strings in `Text(...)`. A `Pill` can
 therefore contain text or richer composed content. Style tokens such as
-`PipelineStage.emphasis` remain strings. Explicit child styles override inherited
-recipe styles.
+Component formatting lives in each component's nested `Style`; scoped `.style(...)`
+updates override inherited recipe styles.
 
 `Pipeline` lays out its stages horizontally and connects each adjacent pair. Additional
 `Label` or `Connector` values remain ordinary annotations passed through its

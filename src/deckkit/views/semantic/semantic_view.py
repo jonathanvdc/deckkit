@@ -4,18 +4,28 @@ from __future__ import annotations
 
 from abc import ABC
 from collections.abc import Callable
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from typing import Any, Generic, TypeVar, cast, overload
 
 from typing_extensions import Self
 
 from ...context import Context
-from ...tokens import DesignToken
+from ...tokens import DesignToken, TokenAssignment, TokenResolver
 from ..composite_view import CompositeView
 from ..view import View
 
 StyleT = TypeVar("StyleT")
 _MISSING_STYLE = object()
+
+
+@dataclass(frozen=True)
+class _StyleFields(TokenAssignment[StyleT]):
+    token: DesignToken[StyleT]
+    changes: tuple[tuple[str, object], ...]
+
+    def resolve(self, values: TokenResolver) -> StyleT:
+        inherited = values.inherited(self.token)
+        return cast(StyleT, replace(cast(Any, inherited), **dict(self.changes)))
 
 
 class SemanticView(CompositeView, ABC):
@@ -62,9 +72,7 @@ class StyledSemanticView(SemanticView, Generic[StyleT]):
             )
         return self.with_token(
             self.style_token,
-            self.style_token.derive(
-                lambda inherited: cast(StyleT, replace(cast(Any, inherited), **changes))
-            ),
+            _StyleFields(self.style_token, tuple(sorted(changes.items()))),
         )
 
     def transform_style(self, transform: Callable[[StyleT], StyleT]) -> Self:

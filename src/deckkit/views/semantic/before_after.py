@@ -88,9 +88,12 @@ class BeforeAfter(StyledSemanticView["BeforeAfter.Style"]):
             VStack(
                 Pill(
                     Text("BEFORE").font(CaptionTextStyle),
-                    background_style=style.before_background,
-                    content_style=style.before_foreground,
-                ).frame(width=style.label_width, height=style.label_height),
+                )
+                .style(
+                    background=style.before_background,
+                    foreground=style.before_foreground,
+                )
+                .frame(width=style.label_width, height=style.label_height),
                 self.before,
             )
         ).flex()
@@ -98,9 +101,12 @@ class BeforeAfter(StyledSemanticView["BeforeAfter.Style"]):
             VStack(
                 Pill(
                     Text("AFTER").font(CaptionTextStyle),
-                    background_style=style.after_background,
-                    content_style=style.after_foreground,
-                ).frame(width=style.label_width, height=style.label_height),
+                )
+                .style(
+                    background=style.after_background,
+                    foreground=style.after_foreground,
+                )
+                .frame(width=style.label_width, height=style.label_height),
                 self.after.foreground_style(AccentColor),
             )
         ).flex()

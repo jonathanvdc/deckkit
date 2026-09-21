@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ...context import Context
-from ...theme import Color, ColorStyle, PrimaryColor, SpacingUnit, SurfaceColor
+from ...theme import Color, PrimaryColor, SpacingUnit, SurfaceColor
 from ...tokens import DesignToken, TokenResolver
 from ...units import Length
 from ..rectangle import Rectangle
@@ -20,7 +20,6 @@ class PipelineStage(StyledSemanticView["PipelineStage.Style"]):
 
     Args:
         label: Arbitrary view content shown inside the stage.
-        emphasis: Foreground style applied to the label by the default recipe.
     """
 
     @dataclass(frozen=True)
@@ -40,7 +39,6 @@ class PipelineStage(StyledSemanticView["PipelineStage.Style"]):
     )
 
     label: View
-    emphasis: ColorStyle | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.label, View):
@@ -53,7 +51,5 @@ class PipelineStage(StyledSemanticView["PipelineStage.Style"]):
         style = context.environment[self.style_token]
         return ZStack(
             Rectangle().foreground_style(style.background),
-            self.label.foreground_style(self.emphasis or style.foreground).padding(
-                style.padding
-            ),
+            self.label.foreground_style(style.foreground).padding(style.padding),
         )

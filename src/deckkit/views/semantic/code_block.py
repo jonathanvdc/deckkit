@@ -24,4 +24,9 @@ class CodeBlock(SemanticView):
             raise TypeError("CodeBlock.content must be Code")
 
     def body(self, context: Context) -> View:
-        return Card(self.content, background_style=self.background_style)
+        card = Card(self.content)
+        return (
+            card.style(background=self.background_style)
+            if self.background_style is not None
+            else card
+        )

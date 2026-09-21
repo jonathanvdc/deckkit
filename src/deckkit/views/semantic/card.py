@@ -8,7 +8,6 @@ from ...context import Context
 from ...geometry import RelativePoint
 from ...theme import (
     Color,
-    ColorStyle,
     PrimaryColor,
     RadiusScale,
     SpacingUnit,
@@ -49,8 +48,6 @@ class Card(StyledSemanticView["Card.Style"]):
     )
 
     content: View
-    background_style: ColorStyle | None = None
-    content_style: ColorStyle | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.content, View):
@@ -60,9 +57,9 @@ class Card(StyledSemanticView["Card.Style"]):
         style = context.environment[self.style_token]
         return ZStack(
             Rectangle(corner_radius=style.corner_radius).foreground_style(
-                self.background_style or style.background
+                style.background
             ),
-            self.content.foreground_style(self.content_style or style.foreground)
+            self.content.foreground_style(style.foreground)
             .frame(max_width=unbounded, alignment=style.alignment)
             .padding(style.padding),
             alignment=style.alignment,

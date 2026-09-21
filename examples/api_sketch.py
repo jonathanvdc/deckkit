@@ -94,12 +94,12 @@ class PipelineSlide(TitleAndContentSlide):
         step = context.state.get("step", 0)
         return VStack(
             Pipeline(
-                PipelineStage(
-                    Text("Parse"), PrimaryColor if step == 0 else MutedColor
-                ).key("parse"),
-                PipelineStage(
-                    Text("Optimize"), PrimaryColor if step == 1 else MutedColor
-                ).key("opt"),
+                PipelineStage(Text("Parse"))
+                .style(foreground=PrimaryColor if step == 0 else MutedColor)
+                .key("parse"),
+                PipelineStage(Text("Optimize"))
+                .style(foreground=PrimaryColor if step == 1 else MutedColor)
+                .key("opt"),
                 annotations=(
                     Connector(
                         Anchor("opt", RelativePoint.bottom),
