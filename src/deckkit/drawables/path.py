@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Union
+from typing import Literal, Union
 
 from ..geometry import Point
 from ..units import Length
@@ -48,3 +48,5 @@ class DrawablePath(Drawable):
     dash: tuple[Length, ...] = ()
     fill_opacity: float = 1.0
     stroke_opacity: float = 1.0
+    line_cap: Literal["butt", "round", "square"] = "butt"
+    line_join: Literal["miter", "round", "bevel"] = "miter"

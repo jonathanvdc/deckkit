@@ -274,6 +274,42 @@ def test_canvas_fill_and_stroke_opacity_export_natively(compiler, tmp_path):
         Stroke(opacity=1.1)
 
 
+def test_canvas_line_caps_and_joins_export_natively(compiler, tmp_path):
+    compiled = compiler.compile_view(
+        Canvas(
+            lambda context, size: (
+                Path(
+                    (
+                        MoveTo(_point(10, 50)),
+                        LineTo(_point(50, 10)),
+                        LineTo(_point(90, 50)),
+                    ),
+                    stroke=Stroke(
+                        width=pt(6),
+                        line_cap="round",
+                        line_join="bevel",
+                    ),
+                ),
+            )
+        ).frame(width=pt(100), height=pt(60))
+    )
+    markup = svg.render(compiled.drawable)
+    assert 'stroke-linecap="round"' in markup
+    assert 'stroke-linejoin="bevel"' in markup
+
+    output = tmp_path / "canvas-stroke-geometry.pptx"
+    pptx.render(CompiledDeck.from_views(compiled), output)
+    with ZipFile(output) as archive:
+        slide_xml = archive.read("ppt/slides/slide1.xml")
+    assert b'cap="rnd"' in slide_xml
+    assert b"<a:bevel" in slide_xml
+
+    with pytest.raises(ValueError, match="line cap"):
+        Stroke(line_cap="invalid")  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="line join"):
+        Stroke(line_join="invalid")  # type: ignore[arg-type]
+
+
 def test_canvas_coordinates_are_translated_but_not_rescaled(compiler):
     view = Canvas(
         lambda context, size: (Rect(Bounds(pt(5), pt(7), pt(20), pt(10)), key="rect"),)

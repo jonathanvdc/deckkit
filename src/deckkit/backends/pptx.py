@@ -40,6 +40,8 @@ def _apply_stroke(
     width: Any,
     dash: tuple[Any, ...] = (),
     opacity: float = 1.0,
+    line_cap: str = "butt",
+    line_join: str = "miter",
 ) -> None:
     from pptx.oxml.ns import qn
     from pptx.oxml.xmlchemy import OxmlElement
@@ -47,23 +49,35 @@ def _apply_stroke(
 
     line.color.rgb = _color(color)
     line.width = Pt(width.points)
-    _apply_alpha(line._get_or_add_ln(), opacity)
-    if not dash:
-        return
-    values = dash if len(dash) % 2 == 0 else dash + dash
     element = line._get_or_add_ln()
+    _apply_alpha(element, opacity)
+    element.set("cap", {"butt": "flat", "round": "rnd", "square": "sq"}[line_cap])
+    for existing in tuple(element):
+        if existing.tag in (qn("a:round"), qn("a:bevel"), qn("a:miter")):
+            element.remove(existing)
     for existing in tuple(element):
         if existing.tag in (qn("a:prstDash"), qn("a:custDash")):
             element.remove(existing)
-    custom = OxmlElement("a:custDash")
-    for index in range(0, len(values), 2):
-        item = OxmlElement("a:ds")
-        item.set("d", str(max(1, round(values[index].points / width.points * 100000))))
-        item.set(
-            "sp", str(max(1, round(values[index + 1].points / width.points * 100000)))
-        )
-        custom.append(item)
-    element.append(custom)
+    if dash:
+        values = dash if len(dash) % 2 == 0 else dash + dash
+        custom = OxmlElement("a:custDash")
+        for index in range(0, len(values), 2):
+            item = OxmlElement("a:ds")
+            item.set(
+                "d", str(max(1, round(values[index].points / width.points * 100000)))
+            )
+            item.set(
+                "sp",
+                str(max(1, round(values[index + 1].points / width.points * 100000))),
+            )
+            custom.append(item)
+        element.append(custom)
+    join = OxmlElement(
+        {"miter": "a:miter", "round": "a:round", "bevel": "a:bevel"}[line_join]
+    )
+    if line_join == "miter":
+        join.set("lim", "800000")
+    element.append(join)
 
 
 def _apply_alpha(element: Any, opacity: float) -> None:
@@ -176,6 +190,8 @@ def _add_node(slide: Any, node: Drawable, *, name: str | None = None) -> Any:
                 node.stroke_width,
                 node.dash,
                 node.stroke_opacity,
+                node.line_cap,
+                node.line_join,
             )
     elif isinstance(node, DrawableEllipse):
         shape = slide.shapes.add_shape(MSO_SHAPE.OVAL, Pt(x), Pt(y), Pt(w), Pt(h))
@@ -194,6 +210,8 @@ def _add_node(slide: Any, node: Drawable, *, name: str | None = None) -> Any:
                 node.stroke_width,
                 node.dash,
                 node.stroke_opacity,
+                node.line_cap,
+                node.line_join,
             )
     elif isinstance(node, DrawableRichText):
         for child in node.children:
@@ -280,7 +298,15 @@ def _add_node(slide: Any, node: Drawable, *, name: str | None = None) -> Any:
             Pt(node.end.x.points),
             Pt(node.end.y.points),
         )
-        _apply_stroke(shape.line, node.color, node.width, node.dash, node.opacity)
+        _apply_stroke(
+            shape.line,
+            node.color,
+            node.width,
+            node.dash,
+            node.opacity,
+            node.line_cap,
+            node.line_join,
+        )
     elif isinstance(node, DrawablePath):
         points = _path_points(node)
         if not points:
@@ -311,6 +337,8 @@ def _add_node(slide: Any, node: Drawable, *, name: str | None = None) -> Any:
                 node.stroke_width,
                 node.dash,
                 node.stroke_opacity,
+                node.line_cap,
+                node.line_join,
             )
     elif isinstance(node, DrawableGroup):
         return None

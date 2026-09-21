@@ -65,6 +65,8 @@ class Stroke:
     width: Length = pt(1)
     dash: tuple[Length, ...] = ()
     opacity: float = 1.0
+    line_cap: Literal["butt", "round", "square"] = "butt"
+    line_join: Literal["miter", "round", "bevel"] = "miter"
 
     def __post_init__(self) -> None:
         require_length(self.width)
@@ -76,6 +78,10 @@ class Stroke:
                 raise ValueError("Stroke dash lengths must be positive")
         if not isfinite(self.opacity) or not 0 <= self.opacity <= 1:
             raise ValueError("Canvas opacity must be between zero and one")
+        if self.line_cap not in ("butt", "round", "square"):
+            raise ValueError("Unknown Canvas stroke line cap")
+        if self.line_join not in ("miter", "round", "bevel"):
+            raise ValueError("Unknown Canvas stroke line join")
 
 
 class CanvasElement(ABC):
@@ -223,6 +229,8 @@ class Rect(CanvasElement):
             self.stroke.dash if self.stroke else (),
             self.fill_opacity,
             self.stroke.opacity if self.stroke else 1.0,
+            self.stroke.line_cap if self.stroke else "butt",
+            self.stroke.line_join if self.stroke else "miter",
         )
 
 
@@ -256,6 +264,8 @@ class Line(CanvasElement):
             self.stroke.width,
             self.stroke.dash,
             self.stroke.opacity,
+            self.stroke.line_cap,
+            self.stroke.line_join,
         )
 
 
@@ -289,6 +299,8 @@ class Ellipse(CanvasElement):
             self.stroke.dash if self.stroke else (),
             self.fill_opacity,
             self.stroke.opacity if self.stroke else 1.0,
+            self.stroke.line_cap if self.stroke else "butt",
+            self.stroke.line_join if self.stroke else "miter",
         )
 
 
@@ -412,6 +424,8 @@ class Path(CanvasElement):
             self.stroke.dash if self.stroke else (),
             self.fill_opacity,
             self.stroke.opacity if self.stroke else 1.0,
+            self.stroke.line_cap if self.stroke else "butt",
+            self.stroke.line_join if self.stroke else "miter",
         )
 
 

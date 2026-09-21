@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from math import cos, pi, sin
+from typing import Literal
 
 from .drawables import (
     Bounds,
@@ -42,6 +43,8 @@ def clip_drawable(node: Drawable, clip: Bounds) -> Drawable:
             node.dash,
             node.fill_opacity,
             node.stroke_opacity,
+            node.line_cap,
+            node.line_join,
         )
     if isinstance(node, DrawableLine):
         segment = _clip_segment(node.start, node.end, clip)
@@ -58,6 +61,8 @@ def clip_drawable(node: Drawable, clip: Bounds) -> Drawable:
             node.width,
             node.dash,
             node.opacity,
+            node.line_cap,
+            node.line_join,
         )
     if isinstance(node, DrawableEllipse):
         if _contains(clip, node.content_bounds):
@@ -84,6 +89,8 @@ def clip_drawable(node: Drawable, clip: Bounds) -> Drawable:
             node.dash,
             node.fill_opacity,
             node.stroke_opacity,
+            node.line_cap,
+            node.line_join,
         )
     if isinstance(node, DrawablePath):
         points, closed = _flatten(node)
@@ -97,6 +104,8 @@ def clip_drawable(node: Drawable, clip: Bounds) -> Drawable:
                 node.dash,
                 node.fill_opacity,
                 node.stroke_opacity,
+                node.line_cap,
+                node.line_join,
             )
         commands: list[DrawablePathCommand] = []
         previous_end = None
@@ -130,6 +139,8 @@ def clip_drawable(node: Drawable, clip: Bounds) -> Drawable:
             node.dash,
             1.0,
             node.stroke_opacity,
+            node.line_cap,
+            node.line_join,
         )
     if isinstance(node, DrawableText):
         return node if _intersection(node.bounds, clip) is not None else _empty(node)
@@ -290,6 +301,8 @@ def _polygon_drawable(
     dash: tuple[Length, ...],
     fill_opacity: float,
     stroke_opacity: float,
+    line_cap: Literal["butt", "round", "square"],
+    line_join: Literal["miter", "round", "bevel"],
 ) -> Drawable:
     if len(points) < 3:
         return _empty(node)
@@ -309,6 +322,8 @@ def _polygon_drawable(
         dash,
         fill_opacity,
         stroke_opacity,
+        line_cap,
+        line_join,
     )
 
 

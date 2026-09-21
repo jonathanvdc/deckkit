@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 
 from ..units import Length, pt
 from .bounds import Bounds
@@ -17,3 +18,5 @@ class DrawableRectangle(Drawable):
     dash: tuple[Length, ...] = ()
     fill_opacity: float = 1.0
     stroke_opacity: float = 1.0
+    line_cap: Literal["butt", "round", "square"] = "butt"
+    line_join: Literal["miter", "round", "bevel"] = "miter"

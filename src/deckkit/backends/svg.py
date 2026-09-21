@@ -53,7 +53,13 @@ def render(layout: Drawable) -> str:
             }
             if node.stroke is not None:
                 attributes.update(
-                    _stroke_attributes(node.stroke, node.stroke_width, node.dash)
+                    _stroke_attributes(
+                        node.stroke,
+                        node.stroke_width,
+                        node.dash,
+                        node.line_cap,
+                        node.line_join,
+                    )
                 )
                 attributes["stroke-opacity"] = str(node.stroke_opacity)
             attributes["fill-opacity"] = str(node.fill_opacity)
@@ -70,7 +76,13 @@ def render(layout: Drawable) -> str:
             }
             if node.stroke is not None:
                 attributes.update(
-                    _stroke_attributes(node.stroke, node.stroke_width, node.dash)
+                    _stroke_attributes(
+                        node.stroke,
+                        node.stroke_width,
+                        node.dash,
+                        node.line_cap,
+                        node.line_join,
+                    )
                 )
                 attributes["stroke-opacity"] = str(node.stroke_opacity)
             attributes["fill-opacity"] = str(node.fill_opacity)
@@ -82,7 +94,15 @@ def render(layout: Drawable) -> str:
                 "x2": str(node.end.x.points),
                 "y2": str(node.end.y.points),
             }
-            attributes.update(_stroke_attributes(node.color, node.width, node.dash))
+            attributes.update(
+                _stroke_attributes(
+                    node.color,
+                    node.width,
+                    node.dash,
+                    node.line_cap,
+                    node.line_join,
+                )
+            )
             attributes["stroke-opacity"] = str(node.opacity)
             SubElement(group, "line", attributes)
         elif isinstance(node, DrawablePath):
@@ -112,7 +132,13 @@ def render(layout: Drawable) -> str:
             attributes = {"d": " ".join(parts), "fill": node.fill or "none"}
             if node.stroke is not None:
                 attributes.update(
-                    _stroke_attributes(node.stroke, node.stroke_width, node.dash)
+                    _stroke_attributes(
+                        node.stroke,
+                        node.stroke_width,
+                        node.dash,
+                        node.line_cap,
+                        node.line_join,
+                    )
                 )
                 attributes["stroke-opacity"] = str(node.stroke_opacity)
             attributes["fill-opacity"] = str(node.fill_opacity)
@@ -187,9 +213,18 @@ def render(layout: Drawable) -> str:
 
 
 def _stroke_attributes(
-    color: str, width: Length, dash: tuple[Length, ...]
+    color: str,
+    width: Length,
+    dash: tuple[Length, ...],
+    line_cap: str = "butt",
+    line_join: str = "miter",
 ) -> dict[str, str]:
-    result = {"stroke": color, "stroke-width": str(width.points)}
+    result = {
+        "stroke": color,
+        "stroke-width": str(width.points),
+        "stroke-linecap": line_cap,
+        "stroke-linejoin": line_join,
+    }
     if dash:
         result["stroke-dasharray"] = " ".join(str(value.points) for value in dash)
     return result
