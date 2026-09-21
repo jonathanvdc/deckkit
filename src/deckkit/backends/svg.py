@@ -15,8 +15,10 @@ from ..drawables import (
     DrawableRichText,
     DrawableText,
     PathClose,
+    PathCubic,
     PathLine,
     PathMove,
+    PathQuadratic,
 )
 from ..units import Length
 
@@ -88,6 +90,17 @@ def render(layout: Drawable) -> str:
                 elif isinstance(command, PathLine):
                     parts.append(
                         f"L {command.point.x.points:g} {command.point.y.points:g}"
+                    )
+                elif isinstance(command, PathQuadratic):
+                    parts.append(
+                        f"Q {command.control.x.points:g} {command.control.y.points:g} "
+                        f"{command.end.x.points:g} {command.end.y.points:g}"
+                    )
+                elif isinstance(command, PathCubic):
+                    parts.append(
+                        f"C {command.control1.x.points:g} {command.control1.y.points:g} "
+                        f"{command.control2.x.points:g} {command.control2.y.points:g} "
+                        f"{command.end.x.points:g} {command.end.y.points:g}"
                     )
                 elif isinstance(command, PathClose):
                     parts.append("Z")

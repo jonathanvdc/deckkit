@@ -19,11 +19,24 @@ class PathLine:
 
 
 @dataclass(frozen=True)
+class PathQuadratic:
+    control: Point
+    end: Point
+
+
+@dataclass(frozen=True)
+class PathCubic:
+    control1: Point
+    control2: Point
+    end: Point
+
+
+@dataclass(frozen=True)
 class PathClose:
     pass
 
 
-DrawablePathCommand = Union[PathMove, PathLine, PathClose]
+DrawablePathCommand = Union[PathMove, PathLine, PathQuadratic, PathCubic, PathClose]
 
 
 @dataclass(frozen=True)

@@ -20,8 +20,10 @@ from ..drawables import (
     DrawableRichText,
     DrawableText,
     PathClose,
+    PathCubic,
     PathLine,
     PathMove,
+    PathQuadratic,
 )
 from .pptx_animation import PptxBehaviorKind, PptxTrigger, plan_slide
 
@@ -57,6 +59,58 @@ def _apply_stroke(
         )
         custom.append(item)
     element.append(custom)
+
+
+def _path_points(node: DrawablePath) -> list[Any]:
+    points = []
+    for command in node.commands:
+        if isinstance(command, (PathMove, PathLine)):
+            points.append(command.point)
+        elif isinstance(command, PathQuadratic):
+            points.extend((command.control, command.end))
+        elif isinstance(command, PathCubic):
+            points.extend((command.control1, command.control2, command.end))
+    return points
+
+
+def _replace_freeform_path(shape: Any, node: DrawablePath) -> None:
+    from pptx.oxml.ns import qn
+    from pptx.oxml.xmlchemy import OxmlElement
+
+    path = shape.element.find(".//" + qn("a:path"))
+    if path is None:
+        raise ValueError("PowerPoint freeform shape did not contain a path")
+    for command in tuple(path):
+        path.remove(command)
+    points = _path_points(node)
+    min_x = min(point.x.points for point in points)
+    min_y = min(point.y.points for point in points)
+
+    def point(parent: Any, value: Any) -> None:
+        item = OxmlElement("a:pt")
+        item.set("x", str(round(value.x.points - min_x)))
+        item.set("y", str(round(value.y.points - min_y)))
+        parent.append(item)
+
+    for command in node.commands:
+        if isinstance(command, PathMove):
+            item = OxmlElement("a:moveTo")
+            point(item, command.point)
+        elif isinstance(command, PathLine):
+            item = OxmlElement("a:lnTo")
+            point(item, command.point)
+        elif isinstance(command, PathQuadratic):
+            item = OxmlElement("a:quadBezTo")
+            point(item, command.control)
+            point(item, command.end)
+        elif isinstance(command, PathCubic):
+            item = OxmlElement("a:cubicBezTo")
+            point(item, command.control1)
+            point(item, command.control2)
+            point(item, command.end)
+        else:
+            item = OxmlElement("a:close")
+        path.append(item)
 
 
 def _add_node(slide: Any, node: Drawable, *, name: str | None = None) -> Any:
@@ -193,11 +247,7 @@ def _add_node(slide: Any, node: Drawable, *, name: str | None = None) -> Any:
         )
         _apply_stroke(shape.line, node.color, node.width, node.dash)
     elif isinstance(node, DrawablePath):
-        points = [
-            command.point
-            for command in node.commands
-            if isinstance(command, (PathMove, PathLine))
-        ]
+        points = _path_points(node)
         if not points:
             return None
         builder = slide.shapes.build_freeform(
@@ -210,6 +260,7 @@ def _add_node(slide: Any, node: Drawable, *, name: str | None = None) -> Any:
             close=any(isinstance(command, PathClose) for command in node.commands),
         )
         shape = builder.convert_to_shape()
+        _replace_freeform_path(shape, node)
         if node.fill is None:
             shape.fill.background()
         else:

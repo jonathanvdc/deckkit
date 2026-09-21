@@ -9,11 +9,13 @@ from deckkit.canvas import (
     CanvasScene,
     CanvasText,
     ClosePath,
+    CubicTo,
     Ellipse,
     Line,
     LineTo,
     MoveTo,
     Path,
+    QuadraticTo,
     Rect,
     Stroke,
 )
@@ -130,6 +132,37 @@ def test_canvas_text_measures_aligns_and_exports_natively(compiler, tmp_path):
     pptx.render(CompiledDeck.from_views(compiled), output)
     shape = Presentation(output).slides[0].shapes[0]
     assert shape.text == "Axis label"
+
+
+def test_canvas_bezier_paths_export_natively(compiler, tmp_path):
+    compiled = compiler.compile_view(
+        Canvas(
+            lambda context, size: (
+                Path(
+                    (
+                        MoveTo(_point(10, 50)),
+                        QuadraticTo(_point(30, 10), _point(50, 50)),
+                        CubicTo(
+                            _point(65, 80),
+                            _point(85, 20),
+                            _point(100, 50),
+                        ),
+                    ),
+                    key="curve",
+                ),
+            )
+        ).frame(width=pt(120), height=pt(90))
+    )
+    markup = svg.render(compiled.drawable)
+    assert "Q 30 10 50 50" in markup
+    assert "C 65 80 85 20 100 50" in markup
+
+    output = tmp_path / "canvas-curves.pptx"
+    pptx.render(CompiledDeck.from_views(compiled), output)
+    with ZipFile(output) as archive:
+        slide_xml = archive.read("ppt/slides/slide1.xml")
+    assert b"quadBezTo" in slide_xml
+    assert b"cubicBezTo" in slide_xml
 
 
 def test_canvas_coordinates_are_translated_but_not_rescaled(compiler):

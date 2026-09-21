@@ -21,8 +21,10 @@ from .drawables import (
     DrawableRectangle,
     DrawableText,
     PathClose,
+    PathCubic,
     PathLine,
     PathMove,
+    PathQuadratic,
 )
 from .geometry import Point
 from .theme import Color, ColorStyle, ForegroundColor, TextStyle, Typography
@@ -288,11 +290,24 @@ class LineTo:
 
 
 @dataclass(frozen=True)
+class QuadraticTo:
+    control: Point
+    end: Point
+
+
+@dataclass(frozen=True)
+class CubicTo:
+    control1: Point
+    control2: Point
+    end: Point
+
+
+@dataclass(frozen=True)
 class ClosePath:
     pass
 
 
-CanvasPathCommand = Union[MoveTo, LineTo, ClosePath]
+CanvasPathCommand = Union[MoveTo, LineTo, QuadraticTo, CubicTo, ClosePath]
 
 
 @dataclass(frozen=True)
@@ -308,8 +323,11 @@ class Path(CanvasElement):
             raise ValueError("A Canvas path must begin with MoveTo")
         if any(isinstance(command, MoveTo) for command in self.commands[1:]):
             raise ValueError("Canvas paths currently support one subpath")
-        if not any(isinstance(command, LineTo) for command in self.commands):
-            raise ValueError("A Canvas path requires at least one LineTo")
+        if not any(
+            isinstance(command, (LineTo, QuadraticTo, CubicTo))
+            for command in self.commands
+        ):
+            raise ValueError("A Canvas path requires at least one drawing command")
         if self.fill is None and self.stroke is None:
             raise ValueError("A Canvas path requires a fill or stroke")
 
@@ -317,23 +335,30 @@ class Path(CanvasElement):
     def anchor_bounds(self) -> Bounds:
         return _points_bounds(
             tuple(
-                command.point
-                for command in self.commands
-                if isinstance(command, (MoveTo, LineTo))
+                point for command in self.commands for point in _command_points(command)
             )
         )
 
     def make_drawable(self, identity, origin, context, metadata):  # type: ignore[no-untyped-def]
         points = tuple(
-            command.point
-            for command in self.commands
-            if isinstance(command, (MoveTo, LineTo))
+            point for command in self.commands for point in _command_points(command)
         )
         translated = tuple(
             PathMove(_translate_point(command.point, origin))
             if isinstance(command, MoveTo)
             else PathLine(_translate_point(command.point, origin))
             if isinstance(command, LineTo)
+            else PathQuadratic(
+                _translate_point(command.control, origin),
+                _translate_point(command.end, origin),
+            )
+            if isinstance(command, QuadraticTo)
+            else PathCubic(
+                _translate_point(command.control1, origin),
+                _translate_point(command.control2, origin),
+                _translate_point(command.end, origin),
+            )
+            if isinstance(command, CubicTo)
             else PathClose()
             for command in self.commands
         )
@@ -416,6 +441,16 @@ def _validate_bounds(bounds: Bounds) -> None:
         raise ValueError("Canvas element dimensions must be non-negative")
 
 
+def _command_points(command: CanvasPathCommand) -> tuple[Point, ...]:
+    if isinstance(command, (MoveTo, LineTo)):
+        return (command.point,)
+    if isinstance(command, QuadraticTo):
+        return command.control, command.end
+    if isinstance(command, CubicTo):
+        return command.control1, command.control2, command.end
+    return ()
+
+
 def _translate_point(point: Point, origin: Point) -> Point:
     return Point(origin.x + point.x, origin.y + point.y)
 
@@ -452,11 +487,13 @@ __all__ = [
     "CanvasSize",
     "CanvasText",
     "ClosePath",
+    "CubicTo",
     "Ellipse",
     "Line",
     "LineTo",
     "MoveTo",
     "Path",
+    "QuadraticTo",
     "Rect",
     "Stroke",
 ]

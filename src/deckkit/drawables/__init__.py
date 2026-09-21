@@ -7,7 +7,15 @@ from .ellipse import DrawableEllipse
 from .group import DrawableGroup
 from .image import DrawableImage
 from .line import DrawableLine
-from .path import DrawablePath, DrawablePathCommand, PathClose, PathLine, PathMove
+from .path import (
+    DrawablePath,
+    DrawablePathCommand,
+    PathClose,
+    PathCubic,
+    PathLine,
+    PathMove,
+    PathQuadratic,
+)
 from .rectangle import DrawableRectangle
 from .rich_text import DrawableRichText
 from .text import DrawableText
@@ -27,6 +35,8 @@ __all__ = [
     "DrawableRichText",
     "DrawableText",
     "PathClose",
+    "PathCubic",
     "PathLine",
     "PathMove",
+    "PathQuadratic",
 ]
