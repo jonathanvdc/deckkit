@@ -9,7 +9,7 @@ from typing import Any, Literal
 
 from .animation import Animation, Transition
 from .canvas import CanvasContext, CanvasRenderer, CanvasScene
-from .canvas_clipping import clip_drawable
+from .canvas.clipping import clip_drawable
 from .drawables import (
     Bounds,
     Drawable,

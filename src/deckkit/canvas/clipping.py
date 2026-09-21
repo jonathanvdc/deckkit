@@ -6,7 +6,7 @@ from collections.abc import Callable
 from math import cos, pi, sin
 from typing import Literal
 
-from .drawables import (
+from ..drawables import (
     Bounds,
     Drawable,
     DrawableEllipse,
@@ -22,8 +22,8 @@ from .drawables import (
     PathMove,
     PathQuadratic,
 )
-from .geometry import Point
-from .units import Length, pt
+from ..geometry import Point
+from ..units import Length, pt
 
 
 def clip_drawable(node: Drawable, clip: Bounds) -> Drawable:
