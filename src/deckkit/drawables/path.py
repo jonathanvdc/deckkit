@@ -46,3 +46,5 @@ class DrawablePath(Drawable):
     stroke: str | None
     stroke_width: Length
     dash: tuple[Length, ...] = ()
+    fill_opacity: float = 1.0
+    stroke_opacity: float = 1.0

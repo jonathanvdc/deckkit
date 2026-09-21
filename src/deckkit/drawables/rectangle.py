@@ -15,3 +15,5 @@ class DrawableRectangle(Drawable):
     stroke: str | None = None
     stroke_width: Length = pt(0)
     dash: tuple[Length, ...] = ()
+    fill_opacity: float = 1.0
+    stroke_opacity: float = 1.0

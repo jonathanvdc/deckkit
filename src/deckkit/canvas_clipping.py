@@ -40,6 +40,8 @@ def clip_drawable(node: Drawable, clip: Bounds) -> Drawable:
             node.stroke,
             node.stroke_width,
             node.dash,
+            node.fill_opacity,
+            node.stroke_opacity,
         )
     if isinstance(node, DrawableLine):
         segment = _clip_segment(node.start, node.end, clip)
@@ -55,6 +57,7 @@ def clip_drawable(node: Drawable, clip: Bounds) -> Drawable:
             node.color,
             node.width,
             node.dash,
+            node.opacity,
         )
     if isinstance(node, DrawableEllipse):
         if _contains(clip, node.content_bounds):
@@ -79,6 +82,8 @@ def clip_drawable(node: Drawable, clip: Bounds) -> Drawable:
             node.stroke,
             node.stroke_width,
             node.dash,
+            node.fill_opacity,
+            node.stroke_opacity,
         )
     if isinstance(node, DrawablePath):
         points, closed = _flatten(node)
@@ -90,6 +95,8 @@ def clip_drawable(node: Drawable, clip: Bounds) -> Drawable:
                 node.stroke,
                 node.stroke_width,
                 node.dash,
+                node.fill_opacity,
+                node.stroke_opacity,
             )
         commands: list[DrawablePathCommand] = []
         previous_end = None
@@ -121,6 +128,8 @@ def clip_drawable(node: Drawable, clip: Bounds) -> Drawable:
             node.stroke,
             node.stroke_width,
             node.dash,
+            1.0,
+            node.stroke_opacity,
         )
     if isinstance(node, DrawableText):
         return node if _intersection(node.bounds, clip) is not None else _empty(node)
@@ -279,6 +288,8 @@ def _polygon_drawable(
     stroke: str | None,
     stroke_width: Length,
     dash: tuple[Length, ...],
+    fill_opacity: float,
+    stroke_opacity: float,
 ) -> Drawable:
     if len(points) < 3:
         return _empty(node)
@@ -296,6 +307,8 @@ def _polygon_drawable(
         stroke,
         stroke_width,
         dash,
+        fill_opacity,
+        stroke_opacity,
     )
 
 

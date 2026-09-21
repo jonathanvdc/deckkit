@@ -12,3 +12,4 @@ class DrawableLine(Drawable):
     color: str
     width: Length
     dash: tuple[Length, ...] = ()
+    opacity: float = 1.0

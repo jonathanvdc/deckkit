@@ -64,6 +64,7 @@ class Stroke:
     style: ColorStyle = ForegroundColor
     width: Length = pt(1)
     dash: tuple[Length, ...] = ()
+    opacity: float = 1.0
 
     def __post_init__(self) -> None:
         require_length(self.width)
@@ -73,6 +74,8 @@ class Stroke:
             require_length(segment)
             if segment <= pt(0):
                 raise ValueError("Stroke dash lengths must be positive")
+        if not isfinite(self.opacity) or not 0 <= self.opacity <= 1:
+            raise ValueError("Canvas opacity must be between zero and one")
 
 
 class CanvasElement(ABC):
@@ -184,6 +187,7 @@ class Rect(CanvasElement):
     fill: ColorStyle = ForegroundColor
     stroke: Stroke | None = None
     corner_radius: Length = pt(0)
+    fill_opacity: float = 1.0
     key: str | None = None
 
     def __post_init__(self) -> None:
@@ -192,6 +196,7 @@ class Rect(CanvasElement):
         require_length(self.corner_radius)
         if self.corner_radius < pt(0):
             raise ValueError("Rectangle corner radius must be non-negative")
+        _validate_opacity(self.fill_opacity)
 
     @property
     def anchor_bounds(self) -> Bounds:
@@ -216,6 +221,8 @@ class Rect(CanvasElement):
             context.color(self.stroke.style).hex if self.stroke else None,
             self.stroke.width if self.stroke else pt(0),
             self.stroke.dash if self.stroke else (),
+            self.fill_opacity,
+            self.stroke.opacity if self.stroke else 1.0,
         )
 
 
@@ -248,6 +255,7 @@ class Line(CanvasElement):
             context.color(self.stroke.style).hex,
             self.stroke.width,
             self.stroke.dash,
+            self.stroke.opacity,
         )
 
 
@@ -256,11 +264,13 @@ class Ellipse(CanvasElement):
     bounds: Bounds
     fill: ColorStyle | None = ForegroundColor
     stroke: Stroke | None = None
+    fill_opacity: float = 1.0
     key: str | None = None
 
     def __post_init__(self) -> None:
         _validate_key(self.key)
         _validate_bounds(self.bounds)
+        _validate_opacity(self.fill_opacity)
 
     @property
     def anchor_bounds(self) -> Bounds:
@@ -277,6 +287,8 @@ class Ellipse(CanvasElement):
             context.color(self.stroke.style).hex if self.stroke else None,
             self.stroke.width if self.stroke else pt(0),
             self.stroke.dash if self.stroke else (),
+            self.fill_opacity,
+            self.stroke.opacity if self.stroke else 1.0,
         )
 
 
@@ -337,6 +349,7 @@ class Path(CanvasElement):
     commands: tuple[CanvasPathCommand, ...]
     fill: ColorStyle | None = None
     stroke: Stroke | None = Stroke()
+    fill_opacity: float = 1.0
     key: str | None = None
 
     def __post_init__(self) -> None:
@@ -352,6 +365,7 @@ class Path(CanvasElement):
             raise ValueError("A Canvas path requires at least one drawing command")
         if self.fill is None and self.stroke is None:
             raise ValueError("A Canvas path requires a fill or stroke")
+        _validate_opacity(self.fill_opacity)
 
     @property
     def anchor_bounds(self) -> Bounds:
@@ -396,6 +410,8 @@ class Path(CanvasElement):
             context.color(self.stroke.style).hex if self.stroke else None,
             self.stroke.width if self.stroke else pt(0),
             self.stroke.dash if self.stroke else (),
+            self.fill_opacity,
+            self.stroke.opacity if self.stroke else 1.0,
         )
 
 
@@ -468,6 +484,11 @@ def _validate_key(key: str | None) -> None:
 def _validate_bounds(bounds: Bounds) -> None:
     if bounds.width < pt(0) or bounds.height < pt(0):
         raise ValueError("Canvas element dimensions must be non-negative")
+
+
+def _validate_opacity(value: float) -> None:
+    if not isfinite(value) or not 0 <= value <= 1:
+        raise ValueError("Canvas opacity must be between zero and one")
 
 
 def _command_points(command: CanvasPathCommand) -> tuple[Point, ...]:

@@ -35,7 +35,11 @@ def _color(value: str) -> Any:
 
 
 def _apply_stroke(
-    line: Any, color: str, width: Any, dash: tuple[Any, ...] = ()
+    line: Any,
+    color: str,
+    width: Any,
+    dash: tuple[Any, ...] = (),
+    opacity: float = 1.0,
 ) -> None:
     from pptx.oxml.ns import qn
     from pptx.oxml.xmlchemy import OxmlElement
@@ -43,6 +47,7 @@ def _apply_stroke(
 
     line.color.rgb = _color(color)
     line.width = Pt(width.points)
+    _apply_alpha(line._get_or_add_ln(), opacity)
     if not dash:
         return
     values = dash if len(dash) % 2 == 0 else dash + dash
@@ -59,6 +64,22 @@ def _apply_stroke(
         )
         custom.append(item)
     element.append(custom)
+
+
+def _apply_alpha(element: Any, opacity: float) -> None:
+    from pptx.oxml.ns import qn
+    from pptx.oxml.xmlchemy import OxmlElement
+
+    color = element.find(".//" + qn("a:srgbClr"))
+    if color is None:
+        return
+    for existing in tuple(color):
+        if existing.tag == qn("a:alpha"):
+            color.remove(existing)
+    if opacity < 1:
+        alpha = OxmlElement("a:alpha")
+        alpha.set("val", str(round(opacity * 100000)))
+        color.append(alpha)
 
 
 def _path_points(node: DrawablePath) -> list[Any]:
@@ -146,9 +167,16 @@ def _add_node(slide: Any, node: Drawable, *, name: str | None = None) -> Any:
             shape.adjustments[0] = radius / min(w, h)
         shape.fill.solid()
         shape.fill.fore_color.rgb = _color(node.color)
+        _apply_alpha(shape.fill._xPr, node.fill_opacity)
         shape.line.fill.background()
         if node.stroke is not None:
-            _apply_stroke(shape.line, node.stroke, node.stroke_width, node.dash)
+            _apply_stroke(
+                shape.line,
+                node.stroke,
+                node.stroke_width,
+                node.dash,
+                node.stroke_opacity,
+            )
     elif isinstance(node, DrawableEllipse):
         shape = slide.shapes.add_shape(MSO_SHAPE.OVAL, Pt(x), Pt(y), Pt(w), Pt(h))
         if node.fill is None:
@@ -156,10 +184,17 @@ def _add_node(slide: Any, node: Drawable, *, name: str | None = None) -> Any:
         else:
             shape.fill.solid()
             shape.fill.fore_color.rgb = _color(node.fill)
+            _apply_alpha(shape.fill._xPr, node.fill_opacity)
         if node.stroke is None:
             shape.line.fill.background()
         else:
-            _apply_stroke(shape.line, node.stroke, node.stroke_width, node.dash)
+            _apply_stroke(
+                shape.line,
+                node.stroke,
+                node.stroke_width,
+                node.dash,
+                node.stroke_opacity,
+            )
     elif isinstance(node, DrawableRichText):
         for child in node.children:
             if isinstance(child, DrawableRectangle):
@@ -245,7 +280,7 @@ def _add_node(slide: Any, node: Drawable, *, name: str | None = None) -> Any:
             Pt(node.end.x.points),
             Pt(node.end.y.points),
         )
-        _apply_stroke(shape.line, node.color, node.width, node.dash)
+        _apply_stroke(shape.line, node.color, node.width, node.dash, node.opacity)
     elif isinstance(node, DrawablePath):
         points = _path_points(node)
         if not points:
@@ -266,10 +301,17 @@ def _add_node(slide: Any, node: Drawable, *, name: str | None = None) -> Any:
         else:
             shape.fill.solid()
             shape.fill.fore_color.rgb = _color(node.fill)
+            _apply_alpha(shape.fill._xPr, node.fill_opacity)
         if node.stroke is None:
             shape.line.fill.background()
         else:
-            _apply_stroke(shape.line, node.stroke, node.stroke_width, node.dash)
+            _apply_stroke(
+                shape.line,
+                node.stroke,
+                node.stroke_width,
+                node.dash,
+                node.stroke_opacity,
+            )
     elif isinstance(node, DrawableGroup):
         return None
     else:

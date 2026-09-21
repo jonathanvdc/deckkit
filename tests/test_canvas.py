@@ -240,6 +240,40 @@ def test_canvas_scene_clips_geometry_before_backend_export(compiler, tmp_path):
     assert len(Presentation(output).slides[0].shapes) == 4
 
 
+def test_canvas_fill_and_stroke_opacity_export_natively(compiler, tmp_path):
+    compiled = compiler.compile_view(
+        Canvas(
+            lambda context, size: (
+                Rect(
+                    Bounds(pt(10), pt(10), pt(40), pt(30)),
+                    fill_opacity=0.4,
+                    stroke=Stroke(width=pt(2), opacity=0.25),
+                ),
+                Line(
+                    _point(10, 60),
+                    _point(90, 60),
+                    Stroke(width=pt(3), opacity=0.5),
+                ),
+            )
+        ).frame(width=pt(100), height=pt(80))
+    )
+    markup = svg.render(compiled.drawable)
+    assert 'fill-opacity="0.4"' in markup
+    assert 'stroke-opacity="0.25"' in markup
+    assert 'stroke-opacity="0.5"' in markup
+
+    output = tmp_path / "canvas-opacity.pptx"
+    pptx.render(CompiledDeck.from_views(compiled), output)
+    with ZipFile(output) as archive:
+        slide_xml = archive.read("ppt/slides/slide1.xml")
+    assert b'<a:alpha val="40000"' in slide_xml
+    assert b'<a:alpha val="25000"' in slide_xml
+    assert b'<a:alpha val="50000"' in slide_xml
+
+    with pytest.raises(ValueError, match="opacity"):
+        Stroke(opacity=1.1)
+
+
 def test_canvas_coordinates_are_translated_but_not_rescaled(compiler):
     view = Canvas(
         lambda context, size: (Rect(Bounds(pt(5), pt(7), pt(20), pt(10)), key="rect"),)

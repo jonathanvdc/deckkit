@@ -55,6 +55,8 @@ def render(layout: Drawable) -> str:
                 attributes.update(
                     _stroke_attributes(node.stroke, node.stroke_width, node.dash)
                 )
+                attributes["stroke-opacity"] = str(node.stroke_opacity)
+            attributes["fill-opacity"] = str(node.fill_opacity)
             if node.corner_radius.points > 0:
                 attributes["rx"] = attributes["ry"] = str(node.corner_radius.points)
             SubElement(group, "rect", attributes)
@@ -70,6 +72,8 @@ def render(layout: Drawable) -> str:
                 attributes.update(
                     _stroke_attributes(node.stroke, node.stroke_width, node.dash)
                 )
+                attributes["stroke-opacity"] = str(node.stroke_opacity)
+            attributes["fill-opacity"] = str(node.fill_opacity)
             SubElement(group, "ellipse", attributes)
         elif isinstance(node, DrawableLine):
             attributes = {
@@ -79,6 +83,7 @@ def render(layout: Drawable) -> str:
                 "y2": str(node.end.y.points),
             }
             attributes.update(_stroke_attributes(node.color, node.width, node.dash))
+            attributes["stroke-opacity"] = str(node.opacity)
             SubElement(group, "line", attributes)
         elif isinstance(node, DrawablePath):
             parts = []
@@ -109,6 +114,8 @@ def render(layout: Drawable) -> str:
                 attributes.update(
                     _stroke_attributes(node.stroke, node.stroke_width, node.dash)
                 )
+                attributes["stroke-opacity"] = str(node.stroke_opacity)
+            attributes["fill-opacity"] = str(node.fill_opacity)
             SubElement(group, "path", attributes)
         elif isinstance(node, DrawableText):
             m = node.metrics
