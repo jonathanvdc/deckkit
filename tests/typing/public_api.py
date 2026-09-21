@@ -27,9 +27,11 @@ from deckkit.themes import (
     AccentColor,
     BaseFont,
     CodeTokenStyle,
+    Color,
     DesignToken,
     Theme,
     TitleTextStyle,
+    Typography,
 )
 from deckkit.units import Length, cm, inch, pt
 from deckkit.views import (
@@ -142,8 +144,11 @@ def check_api(compiler: Compiler) -> None:
     card = Card(Text("Content"))
     style = compiler.environment[Card.style_token]
     assert_type(style, Card.Style)
+    assert_type(style.background, Color)
     assert_type(card.style(style), Card)
     assert_type(card.style(padding=pt(8)), Card)
+    assert_type(Text("Concrete").font(compiler.environment[TitleTextStyle]), Text)
+    assert_type(compiler.environment[TitleTextStyle], Typography)
     assert_type(
         card.transform_style(lambda style: assert_type(style, Card.Style)), Card
     )

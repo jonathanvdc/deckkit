@@ -46,10 +46,10 @@ class BeforeAfter(StyledSemanticView["BeforeAfter.Style"]):
         label_height: Length
         column_spacing: Length
         takeaway_spacing: Length
-        before_background: DesignToken[Color]
-        before_foreground: DesignToken[Color]
-        after_background: DesignToken[Color]
-        after_foreground: DesignToken[Color]
+        before_background: Color
+        before_foreground: Color
+        after_background: Color
+        after_foreground: Color
 
     @staticmethod
     def _default_style(values: TokenResolver) -> Style:
@@ -58,10 +58,10 @@ class BeforeAfter(StyledSemanticView["BeforeAfter.Style"]):
             values[SpacingUnit] * 9,
             values[SpacingUnit] * 6,
             values[SpacingUnit] * 8,
-            SurfaceColor,
-            PrimaryColor,
-            AccentColor,
-            OnAccentColor,
+            values[SurfaceColor],
+            values[PrimaryColor],
+            values[AccentColor],
+            values[OnAccentColor],
         )
 
     style_token = DesignToken[Style](

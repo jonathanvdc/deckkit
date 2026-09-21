@@ -38,11 +38,11 @@ class Pipeline(StyledSemanticView["Pipeline.Style"]):
     @dataclass(frozen=True)
     class Style:
         spacing: Length
-        connector: DesignToken[Color]
+        connector: Color
 
     @staticmethod
     def _default_style(values: TokenResolver) -> Style:
-        return Pipeline.Style(values[SpacingUnit] * 8, PrimaryColor)
+        return Pipeline.Style(values[SpacingUnit] * 8, values[PrimaryColor])
 
     style_token = DesignToken[Style](
         "component.pipeline",

@@ -24,13 +24,15 @@ class PipelineStage(StyledSemanticView["PipelineStage.Style"]):
 
     @dataclass(frozen=True)
     class Style:
-        background: DesignToken[Color]
-        foreground: DesignToken[Color]
+        background: Color
+        foreground: Color
         padding: Length
 
     @staticmethod
     def _default_style(values: TokenResolver) -> Style:
-        return PipelineStage.Style(SurfaceColor, PrimaryColor, values[SpacingUnit] * 5)
+        return PipelineStage.Style(
+            values[SurfaceColor], values[PrimaryColor], values[SpacingUnit] * 5
+        )
 
     style_token = DesignToken[Style](
         "component.pipeline-stage",

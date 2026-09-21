@@ -35,15 +35,18 @@ class Metric(StyledSemanticView["Metric.Style"]):
 
     @dataclass(frozen=True)
     class Style:
-        value_font: DesignToken[Typography]
-        value_color: DesignToken[Color]
-        label_font: DesignToken[Typography]
+        value_font: Typography
+        value_color: Color
+        label_font: Typography
         spacing: Length
 
     @staticmethod
     def _default_style(values: TokenResolver) -> Style:
         return Metric.Style(
-            MetricTextStyle, AccentColor, CaptionTextStyle, values[SpacingUnit] * 2
+            values[MetricTextStyle],
+            values[AccentColor],
+            values[CaptionTextStyle],
+            values[SpacingUnit] * 2,
         )
 
     style_token = DesignToken[Style](

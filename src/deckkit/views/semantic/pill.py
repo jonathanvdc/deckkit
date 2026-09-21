@@ -30,16 +30,16 @@ class Pill(StyledSemanticView["Pill.Style"]):
 
     @dataclass(frozen=True)
     class Style:
-        background: DesignToken[Color]
-        foreground: DesignToken[Color]
+        background: Color
+        foreground: Color
         padding: Length
         corner_radius: Length
 
     @staticmethod
     def _default_style(values: TokenResolver) -> Style:
         return Pill.Style(
-            SurfaceColor,
-            PrimaryColor,
+            values[SurfaceColor],
+            values[PrimaryColor],
             values[SpacingUnit] * 2,
             values[SpacingUnit] * (4.5 * values[RadiusScale]),
         )

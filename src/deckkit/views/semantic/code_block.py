@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from ...context import Context
 from ...theme import ColorStyle
+from ...tokens import DesignToken
 from ..code import Code
 from ..view import View
 from .card import Card
@@ -25,8 +26,7 @@ class CodeBlock(SemanticView):
 
     def body(self, context: Context) -> View:
         card = Card(self.content)
-        return (
-            card.style(background=self.background_style)
-            if self.background_style is not None
-            else card
-        )
+        background = self.background_style
+        if isinstance(background, DesignToken):
+            background = context.environment[background]
+        return card.style(background=background) if background is not None else card

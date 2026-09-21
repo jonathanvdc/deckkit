@@ -28,8 +28,8 @@ class Card(StyledSemanticView["Card.Style"]):
 
     @dataclass(frozen=True)
     class Style:
-        background: DesignToken[Color]
-        foreground: DesignToken[Color]
+        background: Color
+        foreground: Color
         padding: Length
         corner_radius: Length
         alignment: RelativePoint = RelativePoint.top_left
@@ -37,8 +37,8 @@ class Card(StyledSemanticView["Card.Style"]):
     @staticmethod
     def _default_style(values: TokenResolver) -> Style:
         return Card.Style(
-            SurfaceColor,
-            PrimaryColor,
+            values[SurfaceColor],
+            values[PrimaryColor],
             values[SpacingUnit] * 5,
             values[SpacingUnit] * (3 * values[RadiusScale]),
         )

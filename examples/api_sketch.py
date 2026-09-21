@@ -95,10 +95,18 @@ class PipelineSlide(TitleAndContentSlide):
         return VStack(
             Pipeline(
                 PipelineStage(Text("Parse"))
-                .style(foreground=PrimaryColor if step == 0 else MutedColor)
+                .style(
+                    foreground=context.environment[
+                        PrimaryColor if step == 0 else MutedColor
+                    ]
+                )
                 .key("parse"),
                 PipelineStage(Text("Optimize"))
-                .style(foreground=PrimaryColor if step == 1 else MutedColor)
+                .style(
+                    foreground=context.environment[
+                        PrimaryColor if step == 1 else MutedColor
+                    ]
+                )
                 .key("opt"),
                 annotations=(
                     Connector(

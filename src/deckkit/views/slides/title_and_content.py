@@ -19,12 +19,12 @@ class TitleAndContent(StyledSemanticView["TitleAndContent.Style"]):
 
     @dataclass(frozen=True)
     class Style:
-        title_font: DesignToken[Typography]
+        title_font: Typography
         spacing: Length
 
     @staticmethod
     def _default_style(values: TokenResolver) -> Style:
-        return TitleAndContent.Style(TitleTextStyle, values[SpacingUnit] * 8)
+        return TitleAndContent.Style(values[TitleTextStyle], values[SpacingUnit] * 8)
 
     style_token = DesignToken[Style](
         "component.title-and-content",

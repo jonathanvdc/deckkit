@@ -59,8 +59,13 @@ class View:
             raise TypeError("Token override keys must be DesignToken instances")
         return self._with(("tokens", MappingProxyType(dict(overrides))))
 
-    def font(self, style: DesignToken[Typography]) -> Self:
-        return self.with_token(TextStyle, TextStyle.alias(style))
+    def font(self, style: DesignToken[Typography] | Typography) -> Self:
+        override = (
+            TextStyle.alias(style)
+            if isinstance(style, DesignToken)
+            else TextStyle.set(style)
+        )
+        return self.with_token(TextStyle, override)
 
     def foreground_style(self, style: ColorStyle) -> Self:
         override = (

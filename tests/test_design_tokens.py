@@ -13,6 +13,7 @@ from deckkit.themes import (
     Color,
     DesignToken,
     PrimaryColor,
+    SurfaceColor,
     TitleTextStyle,
     TokenDependencyCycle,
     TokenResolver,
@@ -139,6 +140,16 @@ def test_component_style_can_be_partially_derived_in_a_subtree(compiler):
     )
 
     assert background.corner_radius == pt(0)
+
+
+def test_component_styles_resolve_their_token_dependencies(compiler):
+    inherited = compiler.environment[Card.style_token]
+    recolored = compiler.environment.with_token(
+        SurfaceColor, SurfaceColor.set(Color("#ABCDEF"))
+    )
+
+    assert inherited.background == compiler.environment[SurfaceColor]
+    assert recolored[Card.style_token].background == Color("#ABCDEF")
 
 
 def test_component_style_can_be_replaced_in_a_subtree(compiler):
