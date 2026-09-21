@@ -142,12 +142,13 @@ def check_api(compiler: Compiler) -> None:
     card = Card(Text("Content"))
     style = compiler.environment[Card.style_token]
     assert_type(style, Card.Style)
-    assert_type(card.with_style(style), Card)
+    assert_type(card.style(style), Card)
+    assert_type(card.style(padding=pt(8)), Card)
     assert_type(
         card.transform_style(lambda style: assert_type(style, Card.Style)), Card
     )
     pill_style = compiler.environment[Pill.style_token]
-    card.with_style(pill_style)  # type: ignore[arg-type]
+    card.style(pill_style)  # type: ignore[call-overload]
     assert_type(
         Code(
             CodeLine(

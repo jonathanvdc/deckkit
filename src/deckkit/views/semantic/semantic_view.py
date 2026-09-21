@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from abc import ABC
 from collections.abc import Callable
-from typing import Generic, TypeVar
+from dataclasses import replace
+from typing import Any, Generic, TypeVar, cast, overload
 
 from typing_extensions import Self
 
@@ -14,6 +15,7 @@ from ..composite_view import CompositeView
 from ..view import View
 
 StyleT = TypeVar("StyleT")
+_MISSING_STYLE = object()
 
 
 class SemanticView(CompositeView, ABC):
@@ -37,9 +39,33 @@ class StyledSemanticView(SemanticView, Generic[StyleT]):
 
     style_token: DesignToken[StyleT]
 
-    def with_style(self, style: StyleT) -> Self:
-        """Replace this component's style within its view subtree."""
-        return self.with_token(self.style_token, self.style_token.set(style))
+    @overload
+    def style(self, style: StyleT, /) -> Self: ...
+
+    @overload
+    def style(self, **changes: object) -> Self: ...
+
+    def style(  # type: ignore[misc]  # mypy cannot model positional-only-or-kwargs
+        self,
+        replacement: object = _MISSING_STYLE,
+        /,
+        **changes: object,
+    ) -> Self:
+        """Replace the complete style or derive selected dataclass fields."""
+        if replacement is not _MISSING_STYLE:
+            if changes:
+                raise TypeError(
+                    "style accepts either a complete style or keyword fields"
+                )
+            return self.with_token(
+                self.style_token, self.style_token.set(cast(StyleT, replacement))
+            )
+        return self.with_token(
+            self.style_token,
+            self.style_token.derive(
+                lambda inherited: cast(StyleT, replace(cast(Any, inherited), **changes))
+            ),
+        )
 
     def transform_style(self, transform: Callable[[StyleT], StyleT]) -> Self:
         """Derive this component's style from the inherited style."""

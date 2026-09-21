@@ -404,7 +404,7 @@ from dataclasses import replace
 from deckkit.units import pt
 from deckkit.views.semantic import Card
 
-compact = card.transform_style(lambda style: replace(style, padding=pt(12)))
+compact = card.style(padding=pt(12))
 ```
 
 Foundational tokens include the base fonts, base font size, type scale, spacing unit,

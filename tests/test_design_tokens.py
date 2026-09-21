@@ -132,9 +132,7 @@ def test_view_token_scope_recomputes_derived_values(compiler):
 
 
 def test_component_style_can_be_partially_derived_in_a_subtree(compiler):
-    square_card = Card(Text("Content")).transform_style(
-        lambda style: replace(style, corner_radius=pt(0))
-    )
+    square_card = Card(Text("Content")).style(corner_radius=pt(0))
     result = compiler.compile_view(square_card)
     background = next(
         node for node in result.drawable.walk() if isinstance(node, DrawableRectangle)
@@ -145,7 +143,7 @@ def test_component_style_can_be_partially_derived_in_a_subtree(compiler):
 
 def test_component_style_can_be_replaced_in_a_subtree(compiler):
     inherited = compiler.environment[Card.style_token]
-    compact = Card(Text("Content")).with_style(
+    compact = Card(Text("Content")).style(
         replace(inherited, padding=pt(3), corner_radius=pt(1))
     )
     result = compiler.compile_view(compact)
@@ -154,6 +152,16 @@ def test_component_style_can_be_replaced_in_a_subtree(compiler):
     )
 
     assert background.corner_radius == pt(1)
+
+
+def test_partial_component_style_rejects_invalid_usage(compiler):
+    card = Card(Text("Content"))
+    inherited = compiler.environment[Card.style_token]
+
+    with pytest.raises(TypeError, match="unexpected keyword"):
+        compiler.compile_view(card.style(unknown=pt(1)))
+    with pytest.raises(TypeError, match="either a complete style or keyword fields"):
+        card.style(inherited, padding=pt(1))
 
 
 def test_standard_color_modifiers_use_the_active_token_scope(compiler):
