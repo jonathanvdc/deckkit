@@ -21,7 +21,7 @@ from deckkit.views.slides import SlideMargins, TitleAndContent
 
 
 class EditorialTheme(ClarityTheme):
-    """An example structural recipe; editorial design is not a core theme flag."""
+    """An example theme."""
 
     @semantic_renderer(SlideMargins)
     def render_slide_margins(self, component: SlideMargins, context: Context) -> View:
