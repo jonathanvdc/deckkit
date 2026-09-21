@@ -176,6 +176,35 @@ explicitly changes that conversion; embedded DPI metadata is ignored to keep lay
 predictable. Pixel dimensions remain integers. Explicit frames and contain/cover
 still determine the rendered image fit.
 
+Size-dependent vector drawing uses a `Canvas` view. Its renderer receives the
+resolved local size and returns immutable elements; coordinates translate with the
+canvas but do not implicitly rescale. Elements export as native SVG and PowerPoint
+shapes.
+
+```python
+from deckkit.canvas import CanvasScene, Line, Rect, Stroke
+from deckkit.drawables import Bounds
+from deckkit.geometry import Point
+from deckkit.theme import AccentColor, MutedColor
+from deckkit.units import pt
+from deckkit.views import Canvas
+
+drawing = Canvas(
+    lambda context, size: CanvasScene(
+        Rect(
+            Bounds(pt(0), pt(0), size.width / 2, size.height),
+            fill=AccentColor,
+            key="bar",
+        ),
+        Line(
+            Point(pt(0), size.height),
+            Point(size.width, pt(0)),
+            Stroke(MutedColor, pt(2)),
+        ),
+    )
+).frame(width=pt(320), height=pt(180))
+```
+
 SVG declares physical dimensions in `pt` and uses numerical points in its `viewBox`.
 PPTX converts points into EMUs only during export. Change JSON represents lengths as
 objects with a `points` field.

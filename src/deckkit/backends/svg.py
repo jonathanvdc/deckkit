@@ -6,12 +6,19 @@ from xml.etree.ElementTree import Element, SubElement, tostring
 from ..drawables import (
     Drawable,
     DrawableConnector,
+    DrawableEllipse,
     DrawableGroup,
     DrawableImage,
+    DrawableLine,
+    DrawablePath,
     DrawableRectangle,
     DrawableRichText,
     DrawableText,
+    PathClose,
+    PathLine,
+    PathMove,
 )
+from ..units import Length
 
 
 def render(layout: Drawable) -> str:
@@ -29,7 +36,9 @@ def render(layout: Drawable) -> str:
     def visit(node: Drawable, parent: Element) -> None:
         nonlocal marker_count
         group = SubElement(parent, "g", id=node.identity)
-        if isinstance(node, (DrawableText, DrawableRectangle, DrawableImage)):
+        if isinstance(
+            node, (DrawableText, DrawableRectangle, DrawableEllipse, DrawableImage)
+        ):
             b = node.content_bounds
             x, y, w, h = b.x.points, b.y.points, b.width.points, b.height.points
         if isinstance(node, DrawableRectangle):
@@ -40,9 +49,54 @@ def render(layout: Drawable) -> str:
                 "height": str(h),
                 "fill": node.color,
             }
+            if node.stroke is not None:
+                attributes.update(
+                    _stroke_attributes(node.stroke, node.stroke_width, node.dash)
+                )
             if node.corner_radius.points > 0:
                 attributes["rx"] = attributes["ry"] = str(node.corner_radius.points)
             SubElement(group, "rect", attributes)
+        elif isinstance(node, DrawableEllipse):
+            attributes = {
+                "cx": str(x + w / 2),
+                "cy": str(y + h / 2),
+                "rx": str(w / 2),
+                "ry": str(h / 2),
+                "fill": node.fill or "none",
+            }
+            if node.stroke is not None:
+                attributes.update(
+                    _stroke_attributes(node.stroke, node.stroke_width, node.dash)
+                )
+            SubElement(group, "ellipse", attributes)
+        elif isinstance(node, DrawableLine):
+            attributes = {
+                "x1": str(node.start.x.points),
+                "y1": str(node.start.y.points),
+                "x2": str(node.end.x.points),
+                "y2": str(node.end.y.points),
+            }
+            attributes.update(_stroke_attributes(node.color, node.width, node.dash))
+            SubElement(group, "line", attributes)
+        elif isinstance(node, DrawablePath):
+            parts = []
+            for command in node.commands:
+                if isinstance(command, PathMove):
+                    parts.append(
+                        f"M {command.point.x.points:g} {command.point.y.points:g}"
+                    )
+                elif isinstance(command, PathLine):
+                    parts.append(
+                        f"L {command.point.x.points:g} {command.point.y.points:g}"
+                    )
+                elif isinstance(command, PathClose):
+                    parts.append("Z")
+            attributes = {"d": " ".join(parts), "fill": node.fill or "none"}
+            if node.stroke is not None:
+                attributes.update(
+                    _stroke_attributes(node.stroke, node.stroke_width, node.dash)
+                )
+            SubElement(group, "path", attributes)
         elif isinstance(node, DrawableText):
             m = node.metrics
             for i, line in enumerate(m.lines):
@@ -110,3 +164,12 @@ def render(layout: Drawable) -> str:
 
     visit(layout, root)
     return tostring(root, encoding="unicode")
+
+
+def _stroke_attributes(
+    color: str, width: Length, dash: tuple[Length, ...]
+) -> dict[str, str]:
+    result = {"stroke": color, "stroke-width": str(width.points)}
+    if dash:
+        result["stroke-dasharray"] = " ".join(str(value.points) for value in dash)
+    return result

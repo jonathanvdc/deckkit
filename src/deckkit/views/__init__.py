@@ -5,6 +5,7 @@ from ..context import (
     Environment,
     State,
 )
+from .canvas import Canvas
 from .code import Code, CodeHighlighter, CodeLine, CodeSpan
 from .hstack import HStack
 from .image import Image
@@ -19,6 +20,7 @@ from .vstack import VStack
 from .zstack import ZStack
 
 __all__ = [
+    "Canvas",
     "Context",
     "Edge",
     "EdgeSet",

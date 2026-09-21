@@ -4,7 +4,20 @@ from dataclasses import dataclass
 
 from deckkit.animation import Animation, FallbackPolicy, SlideTimeline, Transition
 from deckkit.annotations import Anchor, Connector, Label
-from deckkit.geometry import RelativePoint
+from deckkit.canvas import (
+    CanvasContext,
+    CanvasScene,
+    CanvasSize,
+    Ellipse,
+    Line,
+    LineTo,
+    MoveTo,
+    Path,
+    Rect,
+    Stroke,
+)
+from deckkit.drawables import Bounds
+from deckkit.geometry import Point, RelativePoint
 from deckkit.themes import (
     AccentColor,
     BodyTextStyle,
@@ -15,6 +28,7 @@ from deckkit.themes import (
 )
 from deckkit.units import pt
 from deckkit.views import (
+    Canvas,
     Code,
     CompositeView,
     HStack,
@@ -164,6 +178,93 @@ class ResultsSlide(TitleAndContentSlide):
             if context.state.get("step", 0)
             else None,
             spacing=pt(24),
+        )
+
+
+def _canvas_demo(context: CanvasContext, size: CanvasSize) -> CanvasScene:
+    """Draw a responsive miniature chart using Canvas-local coordinates."""
+    left, top, right, bottom = pt(36), pt(20), pt(20), pt(30)
+    plot_width = size.width - left - right
+    plot_height = size.height - top - bottom
+    baseline = top + plot_height
+    values = (0.42, 0.68, 0.91, 0.74)
+    slot = plot_width / len(values)
+    bar_width = slot * 0.55
+
+    elements = [
+        Rect(Bounds(pt(0), pt(0), size.width, size.height), fill=SurfaceColor),
+    ]
+    for index in range(1, 5):
+        y = top + plot_height * (index / 5)
+        elements.append(
+            Line(
+                Point(left, y),
+                Point(left + plot_width, y),
+                Stroke(MutedColor, pt(1), (pt(3), pt(4))),
+            )
+        )
+    elements.extend(
+        (
+            Line(
+                Point(left, top),
+                Point(left, baseline),
+                Stroke(PrimaryColor, pt(2)),
+            ),
+            Line(
+                Point(left, baseline),
+                Point(left + plot_width, baseline),
+                Stroke(PrimaryColor, pt(2)),
+            ),
+        )
+    )
+
+    points = []
+    for index, value in enumerate(values):
+        x = left + slot * index + (slot - bar_width) / 2
+        height = plot_height * value
+        y = baseline - height
+        center = Point(x + bar_width / 2, y)
+        points.append(center)
+        elements.append(
+            Rect(
+                Bounds(x, y, bar_width, height),
+                fill=AccentColor,
+                corner_radius=pt(5),
+                key=f"bar:{index}",
+            )
+        )
+
+    elements.append(
+        Path(
+            (MoveTo(points[0]), *(LineTo(point) for point in points[1:])),
+            stroke=Stroke(PrimaryColor, pt(3)),
+            key="trend",
+        )
+    )
+    elements.extend(
+        Ellipse(
+            Bounds(point.x - pt(4), point.y - pt(4), pt(8), pt(8)),
+            fill=PrimaryColor,
+            stroke=Stroke(SurfaceColor, pt(2)),
+            key=f"point:{index}",
+        )
+        for index, point in enumerate(points)
+    )
+    return CanvasScene(*elements)
+
+
+class CanvasSlide(TitleAndContentSlide):
+    @property
+    def title(self):
+        return Text("Size-dependent native drawing")
+
+    def content(self, context):
+        return VStack(
+            Canvas(_canvas_demo).frame(width=pt(760), height=pt(270)),
+            Text("Bars, grid lines, points, and the trend path remain native shapes.")
+            .font(CaptionTextStyle)
+            .foreground_style(MutedColor),
+            spacing=pt(18),
         )
 
 

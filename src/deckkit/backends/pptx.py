@@ -11,11 +11,17 @@ from ..compiler import CompiledDeck, CompiledSlide
 from ..drawables import (
     Drawable,
     DrawableConnector,
+    DrawableEllipse,
     DrawableGroup,
     DrawableImage,
+    DrawableLine,
+    DrawablePath,
     DrawableRectangle,
     DrawableRichText,
     DrawableText,
+    PathClose,
+    PathLine,
+    PathMove,
 )
 from .pptx_animation import PptxBehaviorKind, PptxTrigger, plan_slide
 
@@ -26,6 +32,33 @@ def _color(value: str) -> Any:
     return RGBColor.from_string(value[1:])  # type: ignore[no-untyped-call]
 
 
+def _apply_stroke(
+    line: Any, color: str, width: Any, dash: tuple[Any, ...] = ()
+) -> None:
+    from pptx.oxml.ns import qn
+    from pptx.oxml.xmlchemy import OxmlElement
+    from pptx.util import Pt
+
+    line.color.rgb = _color(color)
+    line.width = Pt(width.points)
+    if not dash:
+        return
+    values = dash if len(dash) % 2 == 0 else dash + dash
+    element = line._get_or_add_ln()
+    for existing in tuple(element):
+        if existing.tag in (qn("a:prstDash"), qn("a:custDash")):
+            element.remove(existing)
+    custom = OxmlElement("a:custDash")
+    for index in range(0, len(values), 2):
+        item = OxmlElement("a:ds")
+        item.set("d", str(max(1, round(values[index].points / width.points * 100000))))
+        item.set(
+            "sp", str(max(1, round(values[index + 1].points / width.points * 100000)))
+        )
+        custom.append(item)
+    element.append(custom)
+
+
 def _add_node(slide: Any, node: Drawable, *, name: str | None = None) -> Any:
     from pptx.enum.shapes import MSO_CONNECTOR, MSO_SHAPE
     from pptx.enum.text import MSO_AUTO_SIZE
@@ -33,7 +66,14 @@ def _add_node(slide: Any, node: Drawable, *, name: str | None = None) -> Any:
     from pptx.util import Pt
 
     if isinstance(
-        node, (DrawableText, DrawableRichText, DrawableRectangle, DrawableImage)
+        node,
+        (
+            DrawableText,
+            DrawableRichText,
+            DrawableRectangle,
+            DrawableEllipse,
+            DrawableImage,
+        ),
     ):
         b = node.content_bounds
         x, y, w, h = b.x.points, b.y.points, b.width.points, b.height.points
@@ -53,6 +93,19 @@ def _add_node(slide: Any, node: Drawable, *, name: str | None = None) -> Any:
         shape.fill.solid()
         shape.fill.fore_color.rgb = _color(node.color)
         shape.line.fill.background()
+        if node.stroke is not None:
+            _apply_stroke(shape.line, node.stroke, node.stroke_width, node.dash)
+    elif isinstance(node, DrawableEllipse):
+        shape = slide.shapes.add_shape(MSO_SHAPE.OVAL, Pt(x), Pt(y), Pt(w), Pt(h))
+        if node.fill is None:
+            shape.fill.background()
+        else:
+            shape.fill.solid()
+            shape.fill.fore_color.rgb = _color(node.fill)
+        if node.stroke is None:
+            shape.line.fill.background()
+        else:
+            _apply_stroke(shape.line, node.stroke, node.stroke_width, node.dash)
     elif isinstance(node, DrawableRichText):
         for child in node.children:
             if isinstance(child, DrawableRectangle):
@@ -130,6 +183,42 @@ def _add_node(slide: Any, node: Drawable, *, name: str | None = None) -> Any:
                 end = OxmlElement("a:tailEnd")
                 end.set("type", "triangle")
                 line.append(end)
+    elif isinstance(node, DrawableLine):
+        shape = slide.shapes.add_connector(
+            MSO_CONNECTOR.STRAIGHT,
+            Pt(node.start.x.points),
+            Pt(node.start.y.points),
+            Pt(node.end.x.points),
+            Pt(node.end.y.points),
+        )
+        _apply_stroke(shape.line, node.color, node.width, node.dash)
+    elif isinstance(node, DrawablePath):
+        points = [
+            command.point
+            for command in node.commands
+            if isinstance(command, (PathMove, PathLine))
+        ]
+        if not points:
+            return None
+        builder = slide.shapes.build_freeform(
+            points[0].x.points,
+            points[0].y.points,
+            scale=12700,
+        )
+        builder.add_line_segments(
+            [(point.x.points, point.y.points) for point in points[1:]],
+            close=any(isinstance(command, PathClose) for command in node.commands),
+        )
+        shape = builder.convert_to_shape()
+        if node.fill is None:
+            shape.fill.background()
+        else:
+            shape.fill.solid()
+            shape.fill.fore_color.rgb = _color(node.fill)
+        if node.stroke is None:
+            shape.line.fill.background()
+        else:
+            _apply_stroke(shape.line, node.stroke, node.stroke_width, node.dash)
     elif isinstance(node, DrawableGroup):
         return None
     else:

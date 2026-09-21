@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from .animation import Animation, Transition
+from .canvas import CanvasContext, CanvasRenderer, CanvasScene
 from .drawables import (
     Bounds,
     Drawable,
@@ -102,6 +103,37 @@ class ExpandedView(ABC):
 @dataclass(frozen=True)
 class ExpandedPrimitive(ExpandedView, ABC):
     """A resolved rendering leaf."""
+
+
+@dataclass(frozen=True)
+class ExpandedCanvas(ExpandedPrimitive):
+    renderer: CanvasRenderer = tracked_field()
+
+    def make_drawable(
+        self,
+        plan: LayoutPlan,
+        bounds: Bounds,
+        content_bounds: Bounds,
+        metadata: DrawableMetadata,
+        children: tuple[Drawable, ...],
+    ) -> Drawable:
+        context = plan.properties.get("canvas_context")
+        scene = plan.properties.get("canvas_scene")
+        if not isinstance(context, CanvasContext) or not isinstance(scene, CanvasScene):
+            raise TypeError("Canvas layout must provide a context and resolved scene")
+        origin = Point(content_bounds.x, content_bounds.y)
+        drawables = tuple(
+            element.make_drawable(
+                f"{self.identity}/key:{element.key}"
+                if element.key is not None
+                else f"{self.identity}/element:{index}",
+                origin,
+                context,
+                metadata,
+            )
+            for index, element in enumerate(scene.elements)
+        )
+        return DrawableGroup(self.identity, bounds, metadata, drawables)
 
 
 @dataclass(frozen=True)

@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 
+from ..canvas import CanvasContext, CanvasRenderer, CanvasSize, scene_from
+from ..context import Environment
 from ..layout import LayoutChild, LayoutContext, LayoutPlan, ProposedSize
 from ..measurement import StyledTextLine, TextFlow, layout_styled_text
 from ..units import Length, pt
@@ -44,6 +46,30 @@ class ShapeLayout:
         context: LayoutContext,
     ) -> LayoutPlan:
         return content(proposal.width or pt(0), proposal.height or pt(0))
+
+
+@dataclass(frozen=True)
+class CanvasLayout:
+    renderer: CanvasRenderer
+    environment: Environment
+
+    def measure(
+        self,
+        proposal: ProposedSize,
+        children: Sequence[LayoutChild],
+        context: LayoutContext,
+    ) -> LayoutPlan:
+        width, height = proposal.width or pt(0), proposal.height or pt(0)
+        canvas_context = CanvasContext(
+            self.environment, context.measurer, context.font_resolver
+        )
+        scene = scene_from(self.renderer(canvas_context, CanvasSize(width, height)))
+        return content(
+            width,
+            height,
+            canvas_context=canvas_context,
+            canvas_scene=scene,
+        )
 
 
 @dataclass(frozen=True)
