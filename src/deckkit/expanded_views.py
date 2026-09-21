@@ -42,9 +42,9 @@ class ExpandedMetadata:
     key: str | None
     key_scope: KeyScope
     modifiers: tuple[Modifier, ...]
-    animation: Animation | None = field(metadata={"tracked": True})
-    transition: Transition | None = field(metadata={"tracked": True})
-    animation_boundary: bool = field(metadata={"tracked": True})
+    animation: Animation | None = tracked_field()
+    transition: Transition | None = tracked_field()
+    animation_boundary: bool = tracked_field()
     flex: float = 0.0
 
 
