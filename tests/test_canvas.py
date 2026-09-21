@@ -6,6 +6,7 @@ import pytest
 from deckkit.annotations import Anchor, Annotated, Connector, Label
 from deckkit.backends import pptx, svg
 from deckkit.canvas import (
+    ArcTo,
     CanvasScene,
     CanvasText,
     ClosePath,
@@ -163,6 +164,38 @@ def test_canvas_bezier_paths_export_natively(compiler, tmp_path):
         slide_xml = archive.read("ppt/slides/slide1.xml")
     assert b"quadBezTo" in slide_xml
     assert b"cubicBezTo" in slide_xml
+
+
+def test_canvas_arcs_lower_to_equivalent_native_curves(compiler, tmp_path):
+    compiled = compiler.compile_view(
+        Canvas(
+            lambda context, size: (
+                Path(
+                    (
+                        MoveTo(_point(100, 60)),
+                        ArcTo(_point(60, 60), pt(40), pt(30), 0, 270),
+                    ),
+                    key="arc",
+                ),
+            )
+        ).frame(width=pt(120), height=pt(110))
+    )
+    markup = svg.render(compiled.drawable)
+    assert markup.count(" C ") == 3
+
+    output = tmp_path / "canvas-arc.pptx"
+    pptx.render(CompiledDeck.from_views(compiled), output)
+    with ZipFile(output) as archive:
+        slide_xml = archive.read("ppt/slides/slide1.xml")
+    drawing = {"a": "http://schemas.openxmlformats.org/drawingml/2006/main"}
+    assert len(ET.fromstring(slide_xml).findall(".//a:cubicBezTo", drawing)) == 3
+
+
+def test_canvas_arc_validates_geometry():
+    with pytest.raises(ValueError, match="radii"):
+        ArcTo(_point(0, 0), pt(0), pt(10), 0, 90)
+    with pytest.raises(ValueError, match="sweep"):
+        ArcTo(_point(0, 0), pt(10), pt(10), 0, 0)
 
 
 def test_canvas_coordinates_are_translated_but_not_rescaled(compiler):

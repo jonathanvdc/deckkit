@@ -5,6 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
+from math import cos, isfinite, pi, sin, tan
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Literal, Union
 
@@ -303,11 +304,32 @@ class CubicTo:
 
 
 @dataclass(frozen=True)
+class ArcTo:
+    """An elliptical arc using center geometry and a clockwise sweep in degrees."""
+
+    center: Point
+    radius_x: Length
+    radius_y: Length
+    start_angle: float
+    sweep_angle: float
+
+    def __post_init__(self) -> None:
+        require_length(self.radius_x)
+        require_length(self.radius_y)
+        if self.radius_x <= pt(0) or self.radius_y <= pt(0):
+            raise ValueError("Canvas arc radii must be positive")
+        if not isfinite(self.start_angle) or not isfinite(self.sweep_angle):
+            raise ValueError("Canvas arc angles must be finite")
+        if self.sweep_angle == 0 or abs(self.sweep_angle) > 360:
+            raise ValueError("Canvas arc sweep must be nonzero and at most 360 degrees")
+
+
+@dataclass(frozen=True)
 class ClosePath:
     pass
 
 
-CanvasPathCommand = Union[MoveTo, LineTo, QuadraticTo, CubicTo, ClosePath]
+CanvasPathCommand = Union[MoveTo, LineTo, QuadraticTo, CubicTo, ArcTo, ClosePath]
 
 
 @dataclass(frozen=True)
@@ -324,7 +346,7 @@ class Path(CanvasElement):
         if any(isinstance(command, MoveTo) for command in self.commands[1:]):
             raise ValueError("Canvas paths currently support one subpath")
         if not any(
-            isinstance(command, (LineTo, QuadraticTo, CubicTo))
+            isinstance(command, (LineTo, QuadraticTo, CubicTo, ArcTo))
             for command in self.commands
         ):
             raise ValueError("A Canvas path requires at least one drawing command")
@@ -333,15 +355,15 @@ class Path(CanvasElement):
 
     @property
     def anchor_bounds(self) -> Bounds:
+        commands = _resolve_arcs(self.commands)
         return _points_bounds(
-            tuple(
-                point for command in self.commands for point in _command_points(command)
-            )
+            tuple(point for command in commands for point in _command_points(command))
         )
 
     def make_drawable(self, identity, origin, context, metadata):  # type: ignore[no-untyped-def]
+        commands = _resolve_arcs(self.commands)
         points = tuple(
-            point for command in self.commands for point in _command_points(command)
+            point for command in commands for point in _command_points(command)
         )
         translated = tuple(
             PathMove(_translate_point(command.point, origin))
@@ -360,7 +382,7 @@ class Path(CanvasElement):
             )
             if isinstance(command, CubicTo)
             else PathClose()
-            for command in self.commands
+            for command in commands
         )
         bounds = _points_bounds(
             tuple(_translate_point(point, origin) for point in points)
@@ -451,6 +473,45 @@ def _command_points(command: CanvasPathCommand) -> tuple[Point, ...]:
     return ()
 
 
+def _resolve_arcs(
+    commands: tuple[CanvasPathCommand, ...],
+) -> tuple[CanvasPathCommand, ...]:
+    result = []
+    for command in commands:
+        if not isinstance(command, ArcTo):
+            result.append(command)
+            continue
+        segment_count = max(1, int(abs(command.sweep_angle) / 90 + 0.999999))
+        start = command.start_angle * pi / 180
+        delta = command.sweep_angle * pi / 180 / segment_count
+        for index in range(segment_count):
+            a = start + delta * index
+            b = a + delta
+            factor = 4 / 3 * tan(delta / 4)
+            start_point = Point(
+                command.center.x + command.radius_x * cos(a),
+                command.center.y + command.radius_y * sin(a),
+            )
+            end_point = Point(
+                command.center.x + command.radius_x * cos(b),
+                command.center.y + command.radius_y * sin(b),
+            )
+            result.append(
+                CubicTo(
+                    Point(
+                        start_point.x - command.radius_x * (factor * sin(a)),
+                        start_point.y + command.radius_y * (factor * cos(a)),
+                    ),
+                    Point(
+                        end_point.x + command.radius_x * (factor * sin(b)),
+                        end_point.y - command.radius_y * (factor * cos(b)),
+                    ),
+                    end_point,
+                )
+            )
+    return tuple(result)
+
+
 def _translate_point(point: Point, origin: Point) -> Point:
     return Point(origin.x + point.x, origin.y + point.y)
 
@@ -479,6 +540,7 @@ def _points_bounds(points: tuple[Point, ...]) -> Bounds:
 
 
 __all__ = [
+    "ArcTo",
     "CanvasContext",
     "CanvasElement",
     "CanvasPathCommand",
