@@ -3,6 +3,7 @@ from zipfile import ZipFile
 
 import pytest
 
+from deckkit.annotations import Anchor, Annotated, Connector, Label
 from deckkit.backends import pptx, svg
 from deckkit.canvas import (
     CanvasScene,
@@ -18,15 +19,17 @@ from deckkit.canvas import (
 from deckkit.compiler import CompiledDeck
 from deckkit.drawables import (
     Bounds,
+    DrawableConnector,
     DrawableEllipse,
     DrawableLine,
     DrawablePath,
     DrawableRectangle,
+    DrawableText,
 )
-from deckkit.geometry import Point
+from deckkit.geometry import Point, RelativePoint
 from deckkit.theme import AccentColor, Color, MutedColor
 from deckkit.units import pt
-from deckkit.views import Canvas
+from deckkit.views import Canvas, Text
 
 
 def _point(x, y):
@@ -116,6 +119,51 @@ def test_canvas_rejects_duplicate_keys(compiler):
     )
     with pytest.raises(ValueError, match="unique"):
         compiler.compile_view(view)
+
+
+def test_annotations_target_keyed_canvas_elements(compiler):
+    canvas = Canvas(
+        lambda context, size: (
+            Rect(Bounds(pt(20), pt(30), pt(40), pt(25)), key="bar"),
+            Ellipse(Bounds(pt(75), pt(35), pt(10), pt(10)), key="point"),
+        )
+    ).key("plot")
+    compiled = compiler.compile_view(
+        Annotated(
+            canvas.frame(width=pt(100), height=pt(80)).padding(pt(10)),
+            Label(
+                Anchor.descendant("plot", "bar", RelativePoint.top),
+                Text("Peak"),
+                alignment=RelativePoint.bottom,
+            ),
+            Connector(
+                Anchor.descendant("plot", "bar", RelativePoint.right),
+                Anchor.descendant("plot", "point", RelativePoint.left),
+                end_cap="none",
+            ),
+        )
+    )
+    bar = next(
+        node
+        for node in compiled.drawable.walk()
+        if isinstance(node, DrawableRectangle) and node.identity.endswith("key:bar")
+    )
+    label = next(
+        node
+        for node in compiled.drawable.walk()
+        if isinstance(node, DrawableText) and node.text == "Peak"
+    )
+    connector = next(
+        node for node in compiled.drawable.walk() if isinstance(node, DrawableConnector)
+    )
+
+    assert (
+        label.bounds.x + label.bounds.width / 2 == bar.bounds.x + bar.bounds.width / 2
+    )
+    assert label.bounds.y + label.bounds.height == bar.bounds.y
+    assert connector.start.x == bar.bounds.x + bar.bounds.width
+    assert connector.start.y == bar.bounds.y + bar.bounds.height / 2
+    assert connector.end.x == bar.bounds.x + pt(55)
 
 
 def test_canvas_exports_native_powerpoint_shapes(compiler, tmp_path):

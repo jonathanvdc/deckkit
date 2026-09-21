@@ -205,6 +205,24 @@ drawing = Canvas(
 ).frame(width=pt(320), height=pt(180))
 ```
 
+Keyed Canvas elements also export named layout anchors. An enclosing `Annotated`
+view can target that geometry without turning each element into a View:
+
+```python
+from deckkit.annotations import Anchor, Annotated, Label
+from deckkit.geometry import RelativePoint
+from deckkit.views import Text
+
+annotated = Annotated(
+    drawing.key("plot"),
+    Label(
+        Anchor.descendant("plot", "bar", RelativePoint.top),
+        Text("Peak"),
+        alignment=RelativePoint.bottom,
+    ),
+)
+```
+
 SVG declares physical dimensions in `pt` and uses numerical points in its `viewBox`.
 PPTX converts points into EMUs only during export. Change JSON represents lengths as
 objects with a `points` field.

@@ -3,11 +3,13 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
+from typing import Union
 
 from ..drawables import Bounds
 from ..geometry import Point, RelativePoint
 from ..identity import ViewIdentity
 from ..layout import (
+    ExportedAnchor,
     LayoutChild,
     LayoutContext,
     LayoutPlan,
@@ -17,10 +19,12 @@ from ..layout import (
 from ..units import Length, pt
 from ._content import content
 
+AnchorTarget = Union[ViewIdentity, ExportedAnchor]
+
 
 @dataclass(frozen=True)
 class ResolvedAnchor:
-    target: ViewIdentity
+    target: AnchorTarget
     position: RelativePoint
     offset_x: Length
     offset_y: Length
@@ -29,14 +33,14 @@ class ResolvedAnchor:
 class ResolvedAnnotation(ABC):
     @property
     @abstractmethod
-    def dependencies(self) -> tuple[ViewIdentity, ...]:
+    def dependencies(self) -> tuple[AnchorTarget, ...]:
         raise NotImplementedError
 
     @abstractmethod
     def place(
         self,
         child: LayoutChild,
-        bounds: Mapping[ViewIdentity, Bounds],
+        bounds: Mapping[AnchorTarget, Bounds],
         container: Bounds,
     ) -> Placement:
         raise NotImplementedError
@@ -48,13 +52,13 @@ class ResolvedConnector(ResolvedAnnotation):
     end: ResolvedAnchor
 
     @property
-    def dependencies(self) -> tuple[ViewIdentity, ...]:
+    def dependencies(self) -> tuple[AnchorTarget, ...]:
         return self.start.target, self.end.target
 
     def place(
         self,
         child: LayoutChild,
-        bounds: Mapping[ViewIdentity, Bounds],
+        bounds: Mapping[AnchorTarget, Bounds],
         container: Bounds,
     ) -> Placement:
         start = _point(self.start, bounds)
@@ -80,13 +84,13 @@ class ResolvedLabel(ResolvedAnnotation):
     alignment: RelativePoint
 
     @property
-    def dependencies(self) -> tuple[ViewIdentity, ...]:
+    def dependencies(self) -> tuple[AnchorTarget, ...]:
         return (self.anchor.target,)
 
     def place(
         self,
         child: LayoutChild,
-        bounds: Mapping[ViewIdentity, Bounds],
+        bounds: Mapping[AnchorTarget, Bounds],
         container: Bounds,
     ) -> Placement:
         target = _point(self.anchor, bounds)
@@ -101,9 +105,16 @@ def _collect_bounds(
     plan: LayoutPlan,
     x: Length,
     y: Length,
-    result: dict[ViewIdentity, Bounds],
+    result: dict[AnchorTarget, Bounds],
 ) -> None:
     result[child.view_identity] = Bounds(x, y, plan.width, plan.height)
+    for name, anchor in plan.anchors.items():
+        result[ExportedAnchor(child.view_identity, name)] = Bounds(
+            x + anchor.x,
+            y + anchor.y,
+            anchor.width,
+            anchor.height,
+        )
     for placement in plan.placements:
         _collect_bounds(
             placement.child,
@@ -114,7 +125,7 @@ def _collect_bounds(
         )
 
 
-def _point(anchor: ResolvedAnchor, bounds: Mapping[ViewIdentity, Bounds]) -> Point:
+def _point(anchor: ResolvedAnchor, bounds: Mapping[AnchorTarget, Bounds]) -> Point:
     try:
         target = bounds[anchor.target]
     except KeyError:
@@ -141,7 +152,7 @@ class AnnotatedLayout:
         if len(annotation_children) != len(self.annotations):
             raise ValueError("Annotated child and annotation counts differ")
         main = content_child.measure(proposal)
-        bounds: dict[ViewIdentity, Bounds] = {}
+        bounds: dict[AnchorTarget, Bounds] = {}
         _collect_bounds(content_child, main, pt(0), pt(0), bounds)
         container = Bounds(pt(0), pt(0), main.width, main.height)
         pending = list(enumerate(zip(self.annotations, annotation_children)))

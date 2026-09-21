@@ -10,6 +10,7 @@ from .context import Context
 from .expanded_views import ExpandedConnector, ExpandedMetadata
 from .geometry import RelativePoint
 from .identity import ViewIdentity
+from .layout import ExportedAnchor
 from .layouts import AnnotatedLayout, ConnectorLayout
 from .layouts.annotations import (
     ResolvedAnchor,
@@ -30,20 +31,39 @@ class Anchor:
     position: RelativePoint = RelativePoint.center
     offset_x: Length = pt(0)
     offset_y: Length = pt(0)
+    exported: str | None = None
 
     def __post_init__(self) -> None:
         if not self.target:
             raise ValueError("Anchor target must not be empty")
+        if self.exported is not None and not self.exported:
+            raise ValueError("Exported anchor name must not be empty")
         require_length(self.offset_x)
         require_length(self.offset_y)
 
     def resolve(self, lookup: Callable[[str], ViewIdentity]) -> ResolvedAnchor:
+        owner = lookup(self.target)
         return ResolvedAnchor(
-            lookup(self.target),
+            ExportedAnchor(owner, self.exported)
+            if self.exported is not None
+            else owner,
             self.position,
             self.offset_x,
             self.offset_y,
         )
+
+    @classmethod
+    def descendant(
+        cls,
+        owner: str,
+        name: str,
+        position: RelativePoint = RelativePoint.center,
+        *,
+        offset_x: Length = pt(0),
+        offset_y: Length = pt(0),
+    ) -> Anchor:
+        """Target named geometry exported by a keyed descendant layout."""
+        return cls(owner, position, offset_x, offset_y, name)
 
 
 class Annotation(ABC):

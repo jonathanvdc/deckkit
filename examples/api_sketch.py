@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 
 from deckkit.animation import Animation, FallbackPolicy, SlideTimeline, Transition
-from deckkit.annotations import Anchor, Connector, Label
+from deckkit.annotations import Anchor, Annotated, Connector, Label
 from deckkit.canvas import (
     CanvasContext,
     CanvasScene,
@@ -260,7 +260,23 @@ class CanvasSlide(TitleAndContentSlide):
 
     def content(self, context):
         return VStack(
-            Canvas(_canvas_demo).frame(width=pt(760), height=pt(270)),
+            Annotated(
+                Canvas(_canvas_demo)
+                .key("throughput-plot")
+                .frame(width=pt(760), height=pt(270)),
+                Label(
+                    Anchor.descendant(
+                        "throughput-plot",
+                        "bar:2",
+                        RelativePoint.top,
+                        offset_y=pt(-8),
+                    ),
+                    Text("Peak throughput")
+                    .font(CaptionTextStyle)
+                    .foreground_style(AccentColor),
+                    alignment=RelativePoint.bottom,
+                ),
+            ),
             Text("Bars, grid lines, points, and the trend path remain native shapes.")
             .font(CaptionTextStyle)
             .foreground_style(MutedColor),

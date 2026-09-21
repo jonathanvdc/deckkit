@@ -67,6 +67,7 @@ class CanvasLayout:
         return content(
             width,
             height,
+            anchors=scene.anchors,
             canvas_context=canvas_context,
             canvas_scene=scene,
         )

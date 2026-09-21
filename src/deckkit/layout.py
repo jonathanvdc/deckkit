@@ -83,16 +83,34 @@ class Placement:
 
 
 @dataclass(frozen=True)
+class ExportedAnchor:
+    """The identity of named geometry exported by a layout node."""
+
+    owner: ViewIdentity
+    name: str
+
+    def __post_init__(self) -> None:
+        if not self.name:
+            raise ValueError("Exported anchor names must not be empty")
+
+
+@dataclass(frozen=True)
 class LayoutPlan:
     width: Length
     height: Length
     placements: tuple[Placement, ...] = ()
     properties: Mapping[str, Any] = field(default_factory=dict)
+    anchors: Mapping[str, Bounds] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         require_length(self.width)
         require_length(self.height)
+        if any(not name for name in self.anchors):
+            raise ValueError("Layout anchor names must not be empty")
+        if not all(isinstance(bounds, Bounds) for bounds in self.anchors.values()):
+            raise TypeError("Layout anchors must map names to Bounds")
         object.__setattr__(self, "properties", MappingProxyType(dict(self.properties)))
+        object.__setattr__(self, "anchors", MappingProxyType(dict(self.anchors)))
 
 
 class Layout(Protocol):

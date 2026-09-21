@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Union
 
 from typing_extensions import TypeAlias
@@ -72,6 +73,12 @@ class Stroke:
 class CanvasElement(ABC):
     key: str | None
 
+    @property
+    @abstractmethod
+    def anchor_bounds(self) -> Bounds:
+        """Return this element's visible bounds in Canvas-local coordinates."""
+        raise NotImplementedError
+
     @abstractmethod
     def make_drawable(
         self,
@@ -97,6 +104,10 @@ class Rect(CanvasElement):
         require_length(self.corner_radius)
         if self.corner_radius < pt(0):
             raise ValueError("Rectangle corner radius must be non-negative")
+
+    @property
+    def anchor_bounds(self) -> Bounds:
+        return self.bounds
 
     def make_drawable(self, identity, origin, context, metadata):  # type: ignore[no-untyped-def]
         bounds = _translate_bounds(self.bounds, origin)
@@ -130,6 +141,10 @@ class Line(CanvasElement):
     def __post_init__(self) -> None:
         _validate_key(self.key)
 
+    @property
+    def anchor_bounds(self) -> Bounds:
+        return _point_bounds(self.start, self.end)
+
     def make_drawable(self, identity, origin, context, metadata):  # type: ignore[no-untyped-def]
         start, end = (
             _translate_point(self.start, origin),
@@ -158,6 +173,10 @@ class Ellipse(CanvasElement):
     def __post_init__(self) -> None:
         _validate_key(self.key)
         _validate_bounds(self.bounds)
+
+    @property
+    def anchor_bounds(self) -> Bounds:
+        return self.bounds
 
     def make_drawable(self, identity, origin, context, metadata):  # type: ignore[no-untyped-def]
         bounds = _translate_bounds(self.bounds, origin)
@@ -209,6 +228,16 @@ class Path(CanvasElement):
         if self.fill is None and self.stroke is None:
             raise ValueError("A Canvas path requires a fill or stroke")
 
+    @property
+    def anchor_bounds(self) -> Bounds:
+        return _points_bounds(
+            tuple(
+                command.point
+                for command in self.commands
+                if isinstance(command, (MoveTo, LineTo))
+            )
+        )
+
     def make_drawable(self, identity, origin, context, metadata):  # type: ignore[no-untyped-def]
         points = tuple(
             command.point
@@ -241,14 +270,34 @@ class Path(CanvasElement):
 @dataclass(frozen=True)
 class CanvasScene:
     elements: tuple[CanvasElement, ...]
+    anchors: Mapping[str, Bounds]
 
-    def __init__(self, *elements: CanvasElement) -> None:
+    def __init__(
+        self,
+        *elements: CanvasElement,
+        anchors: Mapping[str, Bounds] | None = None,
+    ) -> None:
         if not all(isinstance(element, CanvasElement) for element in elements):
             raise TypeError("CanvasScene elements must be CanvasElement values")
         keys = [element.key for element in elements if element.key is not None]
         if len(keys) != len(set(keys)):
             raise ValueError("Canvas element keys must be unique within a scene")
+        exported = dict(anchors or {})
+        if any(not name for name in exported):
+            raise ValueError("Canvas anchor names must not be empty")
+        duplicates = set(keys) & set(exported)
+        if duplicates:
+            raise ValueError(
+                "Canvas anchors conflict with element keys: "
+                + ", ".join(sorted(duplicates))
+            )
+        exported.update(
+            (element.key, element.anchor_bounds)
+            for element in elements
+            if element.key is not None
+        )
         object.__setattr__(self, "elements", tuple(elements))
+        object.__setattr__(self, "anchors", MappingProxyType(exported))
 
 
 CanvasRenderer: TypeAlias = Callable[
