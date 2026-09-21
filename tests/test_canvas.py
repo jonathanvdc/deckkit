@@ -7,6 +7,7 @@ from deckkit.annotations import Anchor, Annotated, Connector, Label
 from deckkit.backends import pptx, svg
 from deckkit.canvas import (
     ArcTo,
+    CanvasPathCommand,
     CanvasScene,
     CanvasText,
     ClosePath,
@@ -18,6 +19,7 @@ from deckkit.canvas import (
     Path,
     QuadraticTo,
     Rect,
+    ResolvedPathCommand,
     Stroke,
 )
 from deckkit.compiler import CompiledDeck
@@ -29,6 +31,10 @@ from deckkit.drawables import (
     DrawablePath,
     DrawableRectangle,
     DrawableText,
+    PathClose,
+    PathCubic,
+    PathMove,
+    PathQuadratic,
 )
 from deckkit.geometry import Point, RelativePoint
 from deckkit.theme import AccentColor, Color, MutedColor
@@ -196,6 +202,28 @@ def test_canvas_arc_validates_geometry():
         ArcTo(_point(0, 0), pt(0), pt(10), 0, 90)
     with pytest.raises(ValueError, match="sweep"):
         ArcTo(_point(0, 0), pt(10), pt(10), 0, 0)
+
+
+def test_canvas_path_commands_resolve_and_lower_polymorphically():
+    commands: tuple[CanvasPathCommand, ...] = (
+        MoveTo(_point(10, 20)),
+        QuadraticTo(_point(20, 5), _point(30, 20)),
+        ArcTo(_point(30, 30), pt(10), pt(10), -90, 180),
+        ClosePath(),
+    )
+
+    resolved = tuple(item for command in commands for item in command.resolve())
+
+    assert all(isinstance(command, ResolvedPathCommand) for command in resolved)
+    assert len(resolved) == 5
+    assert tuple(point for command in resolved for point in command.points)
+    assert [type(command.make_drawable(_point(5, 10))) for command in resolved] == [
+        PathMove,
+        PathQuadratic,
+        PathCubic,
+        PathCubic,
+        PathClose,
+    ]
 
 
 def test_canvas_scene_clips_geometry_before_backend_export(compiler, tmp_path):

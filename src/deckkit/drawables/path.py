@@ -1,42 +1,68 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Literal, Union
+from typing import Literal
 
 from ..geometry import Point
 from ..units import Length
 from .drawable import Drawable
 
 
+class DrawablePathCommand(ABC):
+    """A backend-independent command in a resolved drawable path."""
+
+    @property
+    @abstractmethod
+    def points(self) -> tuple[Point, ...]:
+        """Return the points referenced by this command."""
+        raise NotImplementedError
+
+
 @dataclass(frozen=True)
-class PathMove:
+class PathMove(DrawablePathCommand):
     point: Point
 
+    @property
+    def points(self) -> tuple[Point, ...]:
+        return (self.point,)
+
 
 @dataclass(frozen=True)
-class PathLine:
+class PathLine(DrawablePathCommand):
     point: Point
 
+    @property
+    def points(self) -> tuple[Point, ...]:
+        return (self.point,)
+
 
 @dataclass(frozen=True)
-class PathQuadratic:
+class PathQuadratic(DrawablePathCommand):
     control: Point
     end: Point
 
+    @property
+    def points(self) -> tuple[Point, ...]:
+        return self.control, self.end
+
 
 @dataclass(frozen=True)
-class PathCubic:
+class PathCubic(DrawablePathCommand):
     control1: Point
     control2: Point
     end: Point
 
+    @property
+    def points(self) -> tuple[Point, ...]:
+        return self.control1, self.control2, self.end
+
 
 @dataclass(frozen=True)
-class PathClose:
-    pass
-
-
-DrawablePathCommand = Union[PathMove, PathLine, PathQuadratic, PathCubic, PathClose]
+class PathClose(DrawablePathCommand):
+    @property
+    def points(self) -> tuple[Point, ...]:
+        return ()
 
 
 @dataclass(frozen=True)

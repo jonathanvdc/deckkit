@@ -97,15 +97,7 @@ def _apply_alpha(element: Any, opacity: float) -> None:
 
 
 def _path_points(node: DrawablePath) -> list[Any]:
-    points = []
-    for command in node.commands:
-        if isinstance(command, (PathMove, PathLine)):
-            points.append(command.point)
-        elif isinstance(command, PathQuadratic):
-            points.extend((command.control, command.end))
-        elif isinstance(command, PathCubic):
-            points.extend((command.control1, command.control2, command.end))
-    return points
+    return [point for command in node.commands for point in command.points]
 
 
 def _replace_freeform_path(shape: Any, node: DrawablePath) -> None:
