@@ -93,7 +93,7 @@ class RecipeTheme(ClarityTheme):
         )
 
 
-def test_rich_content_in_every_semantic_slot(font, tmp_path):
+def test_rich_content_in_every_before_after_slot(font, tmp_path):
     from pptx import Presentation
 
     component = BeforeAfter(
@@ -102,7 +102,6 @@ def test_rich_content_in_every_semantic_slot(font, tmp_path):
             VStack(Text("2.7×"), Rectangle().frame(width=pt(20), height=pt(5))),
             HStack(Text("New"), Text("pipeline")),
         ),
-        takeaway=VStack(Text("Fewer passes"), Text("Less work")),
     )
     for theme_type in (ClarityTheme, EditorialTheme):
         result = Compiler(
@@ -114,16 +113,14 @@ def test_rich_content_in_every_semantic_slot(font, tmp_path):
             "pipeline",
             "2.7×",
             "New",
-            "Fewer passes",
-            "Less work",
         }
-        assert "Less work" in svg.render(result.drawable)
+        assert "New" in svg.render(result.drawable)
         output = tmp_path / f"rich-{theme_type.__name__}.pptx"
         from deckkit import CompiledDeck
 
         pptx.render(CompiledDeck.from_views(result), output)
         assert any(
-            s.has_text_frame and s.text == "Less work"
+            s.has_text_frame and s.text == "New"
             for s in Presentation(output).slides[0].shapes
         )
 
@@ -138,7 +135,7 @@ def test_pill_accepts_any_view_and_before_after_uses_pills(compiler):
     assert background.corner_radius == pt(18)
 
     comparison = compiler.compile_view(
-        BeforeAfter(Text("Old"), Text("New"), Text("Result"))
+        BeforeAfter(Text("Old"), Text("New"))
     )
     assert (
         sum(
@@ -284,7 +281,7 @@ def test_keyed_children_survive_recipe_changes(font):
 @pytest.mark.parametrize(
     "factory",
     [
-        lambda: BeforeAfter("old", Text("new"), Text("Takeaway")),
+        lambda: BeforeAfter("old", Text("new")),
         lambda: Metric("value", Text("label")),
         lambda: Metric(Text("value"), "label"),
         lambda: PipelineStage("label"),

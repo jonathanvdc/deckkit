@@ -56,7 +56,6 @@ class ComparisonSlide(TitleAndContentSlide):
         return BeforeAfter(
             Text("Parse · Lower · Optimize"),
             Text("Parse · Optimize"),
-            Text("Three intermediate passes disappear."),
         )
 
 

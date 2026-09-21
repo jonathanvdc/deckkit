@@ -208,7 +208,6 @@ summary = Card(VStack(Text("Heading"), Text("Supporting content")))
 comparison = BeforeAfter(
     before=PipelineStage(HStack(Text("Parse"), Text("Lower"))),
     after=PipelineStage(Text("Parse")),
-    takeaway=Metric(Text("3"), Text("Passes removed")),
 )
 ```
 

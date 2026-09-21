@@ -47,4 +47,4 @@ class EditorialTheme(ClarityTheme):
                 spacing=pt(32),
             ).padding(pt(28)),
         )
-        return VStack(comparison, component.takeaway, spacing=pt(32))
+        return comparison

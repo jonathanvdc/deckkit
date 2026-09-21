@@ -27,9 +27,9 @@ from .semantic_view import StyledSemanticView
 
 @dataclass(frozen=True)
 class BeforeAfter(StyledSemanticView["BeforeAfter.Style"]):
-    """Present two states side by side with a concluding takeaway.
+    """Present two states side by side.
 
-    All three content slots accept arbitrary :class:`~deckkit.views.View` values,
+    Both content slots accept arbitrary :class:`~deckkit.views.View` values,
     so callers can use text, stacks, shapes, or other semantic components. The
     default recipe labels the states ``BEFORE`` and ``AFTER`` and highlights the
     latter with the theme's accent style.
@@ -37,7 +37,6 @@ class BeforeAfter(StyledSemanticView["BeforeAfter.Style"]):
     Args:
         before: Content describing the initial state.
         after: Content describing the resulting state.
-        takeaway: Conclusion displayed below the comparison.
     """
 
     @dataclass(frozen=True)
@@ -45,7 +44,6 @@ class BeforeAfter(StyledSemanticView["BeforeAfter.Style"]):
         label_width: Length
         label_height: Length
         column_spacing: Length
-        takeaway_spacing: Length
         before_background: Color
         before_foreground: Color
         after_background: Color
@@ -57,7 +55,6 @@ class BeforeAfter(StyledSemanticView["BeforeAfter.Style"]):
             values[SpacingUnit] * 22,
             values[SpacingUnit] * 9,
             values[SpacingUnit] * 6,
-            values[SpacingUnit] * 8,
             values[SurfaceColor],
             values[PrimaryColor],
             values[AccentColor],
@@ -72,10 +69,9 @@ class BeforeAfter(StyledSemanticView["BeforeAfter.Style"]):
 
     before: View
     after: View
-    takeaway: View
 
     def __post_init__(self) -> None:
-        for name in ("before", "after", "takeaway"):
+        for name in ("before", "after"):
             if not isinstance(getattr(self, name), View):
                 raise TypeError(
                     f"BeforeAfter.{name} must be a View; wrap text in Text(...)"
@@ -110,8 +106,4 @@ class BeforeAfter(StyledSemanticView["BeforeAfter.Style"]):
                 self.after.foreground_style(AccentColor),
             )
         ).flex()
-        return VStack(
-            HStack(before, after, spacing=style.column_spacing),
-            self.takeaway,
-            spacing=style.takeaway_spacing,
-        )
+        return HStack(before, after, spacing=style.column_spacing)
