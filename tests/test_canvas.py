@@ -7,6 +7,7 @@ from deckkit.annotations import Anchor, Annotated, Connector, Label
 from deckkit.backends import pptx, svg
 from deckkit.canvas import (
     CanvasScene,
+    CanvasText,
     ClosePath,
     Ellipse,
     Line,
@@ -98,6 +99,37 @@ def test_canvas_renderer_receives_resolved_size_and_materializes_scene(compiler)
     assert len(root.findall(".//svg:path", namespace)) == 1
     assert 'stroke-dasharray="4.0 2.0"' in markup
     assert "#087F8C" in markup
+
+
+def test_canvas_text_measures_aligns_and_exports_natively(compiler, tmp_path):
+    from pptx import Presentation
+
+    compiled = compiler.compile_view(
+        Canvas(
+            lambda context, size: (
+                CanvasText(
+                    "Axis label",
+                    Point(size.width / 2, size.height),
+                    color=AccentColor,
+                    horizontal_alignment="center",
+                    vertical_alignment="bottom",
+                    key="label",
+                ),
+            )
+        ).frame(width=pt(200), height=pt(80))
+    )
+    canvas = compiled.drawable.children[0].children[0]
+    text = canvas.children[0]
+    assert isinstance(text, DrawableText)
+    assert text.bounds.x + text.bounds.width / 2 == pt(100)
+    assert text.bounds.y + text.bounds.height == pt(80)
+    assert text.color == "#087F8C"
+    assert ">Axis label<" in svg.render(compiled.drawable)
+
+    output = tmp_path / "canvas-text.pptx"
+    pptx.render(CompiledDeck.from_views(compiled), output)
+    shape = Presentation(output).slides[0].shapes[0]
+    assert shape.text == "Axis label"
 
 
 def test_canvas_coordinates_are_translated_but_not_rescaled(compiler):

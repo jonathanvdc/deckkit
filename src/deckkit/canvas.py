@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Literal, Union
 
 from typing_extensions import TypeAlias
 
@@ -19,12 +19,14 @@ from .drawables import (
     DrawableMetadata,
     DrawablePath,
     DrawableRectangle,
+    DrawableText,
     PathClose,
     PathLine,
     PathMove,
 )
 from .geometry import Point
-from .theme import Color, ColorStyle, ForegroundColor
+from .theme import Color, ColorStyle, ForegroundColor, TextStyle, Typography
+from .tokens import DesignToken
 from .units import Length, pt, require_length
 
 if TYPE_CHECKING:
@@ -88,6 +90,89 @@ class CanvasElement(ABC):
         metadata: DrawableMetadata,
     ) -> Drawable:
         raise NotImplementedError
+
+
+@dataclass(frozen=True)
+class CanvasText(CanvasElement):
+    text: str
+    position: Point
+    typography: DesignToken[Typography] | Typography = TextStyle
+    color: ColorStyle = ForegroundColor
+    horizontal_alignment: Literal["left", "center", "right"] = "left"
+    vertical_alignment: Literal["top", "center", "bottom"] = "top"
+    key: str | None = None
+
+    def __post_init__(self) -> None:
+        _validate_key(self.key)
+        if not isinstance(self.text, str):
+            raise TypeError("CanvasText.text must be a string")
+        if "\n" in self.text:
+            raise ValueError("CanvasText currently supports one line")
+        if self.horizontal_alignment not in ("left", "center", "right"):
+            raise ValueError("Unknown horizontal CanvasText alignment")
+        if self.vertical_alignment not in ("top", "center", "bottom"):
+            raise ValueError("Unknown vertical CanvasText alignment")
+
+    def _measure(self, context: CanvasContext):  # type: ignore[no-untyped-def]
+        typography = (
+            self.typography
+            if isinstance(self.typography, Typography)
+            else context.environment[self.typography]
+        )
+        font = context.font_resolver.resolve(typography.font)
+        metrics = context.measurer.measure(
+            self.text,
+            font,
+            typography.size,
+            pt(1_000_000_000),
+            typography.line_spacing,
+            "verbatim",
+        )
+        return typography, font, metrics
+
+    def _local_bounds(self, context: CanvasContext) -> Bounds:
+        _, _, metrics = self._measure(context)
+        horizontal = {"left": 0.0, "center": 0.5, "right": 1.0}[
+            self.horizontal_alignment
+        ]
+        vertical = {"top": 0.0, "center": 0.5, "bottom": 1.0}[self.vertical_alignment]
+        return Bounds(
+            self.position.x - metrics.width * horizontal,
+            self.position.y - metrics.height * vertical,
+            metrics.width,
+            metrics.height,
+        )
+
+    @property
+    def anchor_bounds(self) -> Bounds:
+        # Text bounds depend on font measurement. The Canvas layout replaces this
+        # placeholder with measured bounds when exporting keyed element anchors.
+        return Bounds(self.position.x, self.position.y, pt(0), pt(0))
+
+    def measured_anchor_bounds(self, context: CanvasContext) -> Bounds:
+        return self._local_bounds(context)
+
+    def make_drawable(
+        self,
+        identity: str,
+        origin: Point,
+        context: CanvasContext,
+        metadata: DrawableMetadata,
+    ) -> Drawable:
+        typography, font, metrics = self._measure(context)
+        bounds = _translate_bounds(self._local_bounds(context), origin)
+        return DrawableText(
+            identity,
+            bounds,
+            metadata,
+            bounds,
+            self.text,
+            context.color(self.color).hex,
+            font,
+            typography.font,
+            typography.size,
+            metrics,
+        )
 
 
 @dataclass(frozen=True)
@@ -299,6 +384,18 @@ class CanvasScene:
         object.__setattr__(self, "elements", tuple(elements))
         object.__setattr__(self, "anchors", MappingProxyType(exported))
 
+    def measured_anchors(self, context: CanvasContext) -> Mapping[str, Bounds]:
+        return MappingProxyType(
+            {
+                **self.anchors,
+                **{
+                    element.key: element.measured_anchor_bounds(context)
+                    for element in self.elements
+                    if isinstance(element, CanvasText) and element.key is not None
+                },
+            }
+        )
+
 
 CanvasRenderer: TypeAlias = Callable[
     [CanvasContext, CanvasSize], Union[CanvasScene, Iterable[CanvasElement]]
@@ -353,6 +450,7 @@ __all__ = [
     "CanvasRenderer",
     "CanvasScene",
     "CanvasSize",
+    "CanvasText",
     "ClosePath",
     "Ellipse",
     "Line",

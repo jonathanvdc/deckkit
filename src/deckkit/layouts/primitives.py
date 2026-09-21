@@ -67,7 +67,7 @@ class CanvasLayout:
         return content(
             width,
             height,
-            anchors=scene.anchors,
+            anchors=scene.measured_anchors(canvas_context),
             canvas_context=canvas_context,
             canvas_scene=scene,
         )
