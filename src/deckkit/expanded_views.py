@@ -9,6 +9,7 @@ from typing import Any, Literal
 
 from .animation import Animation, Transition
 from .canvas import CanvasContext, CanvasRenderer, CanvasScene
+from .canvas_clipping import clip_drawable
 from .drawables import (
     Bounds,
     Drawable,
@@ -133,6 +134,14 @@ class ExpandedCanvas(ExpandedPrimitive):
             )
             for index, element in enumerate(scene.elements)
         )
+        if scene.clip is not None:
+            clip = Bounds(
+                origin.x + scene.clip.x,
+                origin.y + scene.clip.y,
+                scene.clip.width,
+                scene.clip.height,
+            )
+            drawables = tuple(clip_drawable(drawable, clip) for drawable in drawables)
         return DrawableGroup(self.identity, bounds, metadata, drawables)
 
 

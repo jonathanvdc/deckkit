@@ -198,6 +198,48 @@ def test_canvas_arc_validates_geometry():
         ArcTo(_point(0, 0), pt(10), pt(10), 0, 0)
 
 
+def test_canvas_scene_clips_geometry_before_backend_export(compiler, tmp_path):
+    clip = Bounds(pt(20), pt(20), pt(60), pt(40))
+    compiled = compiler.compile_view(
+        Canvas(
+            lambda context, size: CanvasScene(
+                Line(_point(0, 40), _point(100, 40), key="line"),
+                Rect(Bounds(pt(10), pt(10), pt(30), pt(30)), key="rect"),
+                Ellipse(Bounds(pt(65), pt(35), pt(30), pt(30)), key="ellipse"),
+                Path(
+                    (
+                        MoveTo(_point(0, 30)),
+                        CubicTo(_point(25, 0), _point(75, 80), _point(100, 30)),
+                    ),
+                    key="curve",
+                ),
+                clip=clip,
+            )
+        ).frame(width=pt(100), height=pt(80))
+    )
+    canvas = compiled.drawable.children[0].children[0]
+    line = next(node for node in canvas.walk() if isinstance(node, DrawableLine))
+    rectangle = next(
+        node for node in canvas.walk() if isinstance(node, DrawableRectangle)
+    )
+    assert line.start == _point(20, 40)
+    assert line.end == _point(80, 40)
+    assert rectangle.bounds == Bounds(pt(20), pt(20), pt(20), pt(20))
+    for node in canvas.walk():
+        if isinstance(node, (DrawableLine, DrawableRectangle, DrawablePath)):
+            assert node.bounds.x >= clip.x
+            assert node.bounds.y >= clip.y
+            assert node.bounds.x + node.bounds.width <= clip.x + clip.width
+            assert node.bounds.y + node.bounds.height <= clip.y + clip.height
+
+    assert 'x1="20.0"' in svg.render(compiled.drawable)
+    output = tmp_path / "canvas-clipping.pptx"
+    pptx.render(CompiledDeck.from_views(compiled), output)
+    from pptx import Presentation
+
+    assert len(Presentation(output).slides[0].shapes) == 4
+
+
 def test_canvas_coordinates_are_translated_but_not_rescaled(compiler):
     view = Canvas(
         lambda context, size: (Rect(Bounds(pt(5), pt(7), pt(20), pt(10)), key="rect"),)
