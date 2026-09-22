@@ -16,7 +16,7 @@ from deckkit.canvas import (
     Rect,
     Stroke,
 )
-from deckkit.charts import Axis, BarMark, Chart, LinearScaleSpec, PointMark, value
+from deckkit.charts import Axis, BarMark, Chart, PointMark, value
 from deckkit.drawables import Bounds
 from deckkit.geometry import Point, RelativePoint
 from deckkit.themes import (
@@ -298,7 +298,7 @@ _COMPILER_RUNS = (
 class ScatterChartSlide(TitleAndContentSlide):
     @property
     def title(self):
-        return Text("Compile time in seconds by module count")
+        return Text("Compile time by module count")
 
     def content(self, context):
         return Chart(
@@ -306,14 +306,13 @@ class ScatterChartSlide(TitleAndContentSlide):
                 _COMPILER_RUNS,
                 x=value("Modules", lambda run: run["modules"]),
                 y=value("Compile time", lambda run: run["seconds"]),
+                color=value("Configuration", lambda run: run["configuration"]),
                 radius=pt(5),
                 key=lambda run: f"{run['configuration']}:{run['modules']}",
                 series="compiler-runs",
             ),
-            x_scale=LinearScaleSpec(domain=(15, 57)),
-            y_scale=LinearScaleSpec(domain=(5, 18)),
             x_axis=Axis(title="Modules"),
-            y_axis=Axis(),
+            y_axis=Axis(title="Seconds"),
         ).frame(width=pt(760), height=pt(330))
 
 
@@ -328,7 +327,7 @@ _PASS_TIMES = (
 class BarChartSlide(TitleAndContentSlide):
     @property
     def title(self):
-        return Text("Time per compiler pass in milliseconds")
+        return Text("Time spent in each compiler pass")
 
     def content(self, context):
         return Chart(
@@ -338,10 +337,10 @@ class BarChartSlide(TitleAndContentSlide):
                 y=value("Duration", lambda item: item["milliseconds"]),
                 key=lambda item: item["pass"],
                 series="pass-duration",
+                label=lambda item: f"{item['milliseconds']} ms",
             ),
-            y_scale=LinearScaleSpec(domain=(0, 130)),
             x_axis=Axis(title="Compiler pass"),
-            y_axis=Axis(),
+            y_axis=Axis(title="Milliseconds"),
         ).frame(width=pt(760), height=pt(330))
 
 
