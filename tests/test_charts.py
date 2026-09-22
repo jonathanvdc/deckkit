@@ -11,9 +11,11 @@ from deckkit.charts import (
     DomainContribution,
     LinearScaleSpec,
     OrdinalScaleSpec,
+    PointMark,
     value,
 )
-from deckkit.drawables import Bounds
+from deckkit.drawables import Bounds, DrawableEllipse
+from deckkit.theme import Color
 from deckkit.units import pt
 
 
@@ -149,3 +151,35 @@ def test_chart_axes_measure_labels_and_lower_outside_plot_clip(compiler):
     assert observed[-1].plot_bounds.height < pt(116)
     assert "First" in markup
     assert "Category" in markup
+
+
+def test_point_mark_lowers_styled_points_with_stable_keys(compiler):
+    data = (
+        {"id": "a", "x": 1, "y": 4},
+        {"id": "b", "x": 2, "y": 7},
+    )
+    mark = PointMark(
+        data,
+        x=value("X", lambda row: row["x"]),
+        y=value("Revenue", lambda row: row["y"]),
+        fill=lambda row: Color("#ff0000") if row["id"] == "a" else Color("#0000ff"),
+        radius=lambda row: pt(4 if row["id"] == "a" else 3),
+        key=lambda row: row["id"],
+    )
+    compiled = compiler.compile_view(
+        Chart(
+            mark,
+            x_scale=LinearScaleSpec(domain=(0, 3)),
+            y_scale=LinearScaleSpec(domain=(0, 10)),
+            x_axis=None,
+            y_axis=None,
+        ).frame(width=pt(200), height=pt(100))
+    )
+    points = [
+        node for node in compiled.drawable.walk() if isinstance(node, DrawableEllipse)
+    ]
+
+    assert [point.fill for point in points] == ["#FF0000", "#0000FF"]
+    assert points[0].bounds.width == pt(8)
+    assert points[0].identity.endswith("key:series:Revenue/datum:a")
+    assert points[1].identity.endswith("key:series:Revenue/datum:b")

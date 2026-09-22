@@ -11,6 +11,7 @@ from .content import (
     value,
 )
 from .context import ChartContext, ResolvedPositionScale
+from .marks import PointMark
 from .scales import (
     BandScale,
     BandScaleSpec,
@@ -34,6 +35,7 @@ __all__ = [
     "LinearScaleSpec",
     "OrdinalScale",
     "OrdinalScaleSpec",
+    "PointMark",
     "PositionScaleSpec",
     "ResolvedPositionScale",
     "Value",
