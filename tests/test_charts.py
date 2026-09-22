@@ -5,6 +5,7 @@ from deckkit.canvas import Rect
 from deckkit.charts import (
     Axis,
     BandScaleSpec,
+    BarMark,
     Chart,
     ChartContent,
     CompositeChartContent,
@@ -14,7 +15,7 @@ from deckkit.charts import (
     PointMark,
     value,
 )
-from deckkit.drawables import Bounds, DrawableEllipse
+from deckkit.drawables import Bounds, DrawableEllipse, DrawableRectangle
 from deckkit.theme import Color
 from deckkit.units import pt
 
@@ -183,3 +184,41 @@ def test_point_mark_lowers_styled_points_with_stable_keys(compiler):
     assert points[0].bounds.width == pt(8)
     assert points[0].identity.endswith("key:series:Revenue/datum:a")
     assert points[1].identity.endswith("key:series:Revenue/datum:b")
+
+
+@pytest.mark.parametrize(
+    ("orientation", "expected_count"),
+    (("vertical", 2), ("horizontal", 2)),
+)
+def test_bar_mark_lowers_vertical_and_horizontal_bars(
+    compiler, orientation, expected_count
+):
+    data = (
+        {"name": "A", "amount": 4},
+        {"name": "B", "amount": 7},
+    )
+    if orientation == "vertical":
+        mark = BarMark(
+            data,
+            x=value("Name", lambda row: row["name"]),
+            y=value("Amount", lambda row: row["amount"]),
+            key=lambda row: row["name"],
+        )
+    else:
+        mark = BarMark(
+            data,
+            x=value("Amount", lambda row: row["amount"]),
+            y=value("Name", lambda row: row["name"]),
+            orientation="horizontal",
+            key=lambda row: row["name"],
+        )
+    compiled = compiler.compile_view(
+        Chart(mark, x_axis=None, y_axis=None).frame(width=pt(200), height=pt(100))
+    )
+    bars = [
+        node for node in compiled.drawable.walk() if isinstance(node, DrawableRectangle)
+    ]
+
+    assert len(bars) == expected_count
+    assert all(bar.bounds.width > pt(0) and bar.bounds.height > pt(0) for bar in bars)
+    assert bars[0].identity.endswith("key:series:Amount/datum:A")
