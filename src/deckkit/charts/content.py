@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Generic, Literal, TypeVar
 
 from ..canvas import CanvasElement
+from ..units import Length, pt, require_length
 from .context import ChartContext
 
 Datum = TypeVar("Datum")
@@ -59,12 +60,41 @@ class DomainContribution:
         return cls(channel, "categorical", tuple(values))
 
 
+@dataclass(frozen=True)
+class ChartOverflow:
+    top: Length = pt(0)
+    right: Length = pt(0)
+    bottom: Length = pt(0)
+    left: Length = pt(0)
+
+    def __post_init__(self) -> None:
+        for value in (self.top, self.right, self.bottom, self.left):
+            require_length(value)
+            if value < pt(0):
+                raise ValueError("Chart overflow must be non-negative")
+
+    @classmethod
+    def maximum(cls, values: Iterable[ChartOverflow]) -> ChartOverflow:
+        items = tuple(values)
+        if not items:
+            return cls()
+        return cls(
+            max(item.top for item in items),
+            max(item.right for item in items),
+            max(item.bottom for item in items),
+            max(item.left for item in items),
+        )
+
+
 class ChartContent(ABC):
     """Declarative chart content that contributes domains and lowers to Canvas."""
 
     @abstractmethod
     def domain_contributions(self) -> Iterable[DomainContribution]:
         raise NotImplementedError
+
+    def overflow(self) -> ChartOverflow:
+        return ChartOverflow()
 
     @abstractmethod
     def lower(self, context: ChartContext) -> Iterable[CanvasElement]:
@@ -89,6 +119,9 @@ class CompositeChartContent(ChartContent):
 
     def lower(self, context: ChartContext) -> Iterable[CanvasElement]:
         return (element for child in self.children for element in child.lower(context))
+
+    def overflow(self) -> ChartOverflow:
+        return ChartOverflow.maximum(child.overflow() for child in self.children)
 
 
 def chart_content(children: Sequence[ChartContent]) -> ChartContent:

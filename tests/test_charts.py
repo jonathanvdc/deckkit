@@ -178,13 +178,7 @@ def test_point_mark_lowers_styled_points_with_stable_keys(compiler):
         key=lambda row: row["id"],
     )
     compiled = compiler.compile_view(
-        Chart(
-            mark,
-            x_scale=LinearScaleSpec(domain=(0, 3)),
-            y_scale=LinearScaleSpec(domain=(0, 10)),
-            x_axis=None,
-            y_axis=None,
-        ).frame(width=pt(200), height=pt(100))
+        Chart(mark, x_axis=None, y_axis=None).frame(width=pt(200), height=pt(100))
     )
     points = [
         node for node in compiled.drawable.walk() if isinstance(node, DrawableEllipse)
@@ -194,6 +188,37 @@ def test_point_mark_lowers_styled_points_with_stable_keys(compiler):
     assert points[0].bounds.width == pt(8)
     assert points[0].identity.endswith("key:series:Revenue/datum:a")
     assert points[1].identity.endswith("key:series:Revenue/datum:b")
+
+
+def test_point_mark_insets_scale_range_for_rendered_radius(compiler):
+    observed = []
+
+    class ObservedPointMark(PointMark):
+        def lower(self, context):
+            observed.append(context)
+            return super().lower(context)
+
+    mark = ObservedPointMark(
+        ({"x": 0, "y": 0}, {"x": 10, "y": 10}),
+        x=value("X", lambda row: row["x"]),
+        y=value("Y", lambda row: row["y"]),
+        radius=pt(6),
+    )
+    compiled = compiler.compile_view(
+        Chart(
+            mark,
+            x_scale=LinearScaleSpec(domain=(0, 10)),
+            y_scale=LinearScaleSpec(domain=(0, 10)),
+            x_axis=None,
+            y_axis=None,
+        ).frame(width=pt(100), height=pt(100))
+    )
+
+    points = [
+        node for node in compiled.drawable.walk() if isinstance(node, DrawableEllipse)
+    ]
+    assert len(points) == 2
+    assert observed[-1].x_scale(0) == observed[-1].plot_bounds.x + pt(6)
 
 
 @pytest.mark.parametrize(

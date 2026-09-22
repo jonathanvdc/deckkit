@@ -8,7 +8,7 @@ from ..canvas import CanvasElement, Ellipse, Rect
 from ..drawables import Bounds
 from ..theme import AccentColor, ColorStyle
 from ..units import Length, pt, require_length
-from .content import ChartContent, DomainContribution, DomainKind, Value
+from .content import ChartContent, ChartOverflow, DomainContribution, DomainKind, Value
 from .context import ChartContext
 
 Datum = TypeVar("Datum")
@@ -67,6 +67,14 @@ class PointMark(ChartContent, Generic[Datum]):
             _contribution("x", x_values, self.x_kind),
             _contribution("y", y_values, self.y_kind),
         )
+
+    def overflow(self) -> ChartOverflow:
+        radii = tuple(
+            self.radius(datum) if callable(self.radius) else self.radius
+            for datum in self.data
+        )
+        radius = max(radii, default=pt(0))
+        return ChartOverflow(radius, radius, radius, radius)
 
     def lower(self, context: ChartContext) -> Iterable[CanvasElement]:
         result: list[CanvasElement] = []

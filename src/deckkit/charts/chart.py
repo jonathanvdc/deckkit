@@ -15,7 +15,7 @@ from ..views.canvas import Canvas
 from ..views.composite_view import CompositeView
 from ..views.view import View
 from .axes import DEFAULT_AXIS, Axis, lower_axes, required_axis_space
-from .content import ChartContent, DomainContribution, chart_content
+from .content import ChartContent, ChartOverflow, DomainContribution, chart_content
 from .context import ChartContext, ResolvedPositionScale
 from .scales import BandScaleSpec, LinearScaleSpec
 
@@ -71,12 +71,13 @@ class Chart(CompositeView):
 
     def _render(self, canvas: CanvasContext, size: CanvasSize) -> CanvasScene:
         contributions = tuple(self.content.domain_contributions())
+        overflow = self.content.overflow()
         provisional_plot = _plot_bounds(size, self.plot_insets)
         provisional_x = _resolve_scale(
-            "x", contributions, self.x_scale, provisional_plot
+            "x", contributions, self.x_scale, provisional_plot, overflow
         )
         provisional_y = _resolve_scale(
-            "y", contributions, self.y_scale, provisional_plot
+            "y", contributions, self.y_scale, provisional_plot, overflow
         )
         bottom, left = required_axis_space(
             canvas, provisional_x, provisional_y, self.x_axis, self.y_axis
@@ -93,8 +94,8 @@ class Chart(CompositeView):
         chart_context = ChartContext(
             canvas,
             plot_bounds,
-            _resolve_scale("x", contributions, self.x_scale, plot_bounds),
-            _resolve_scale("y", contributions, self.y_scale, plot_bounds),
+            _resolve_scale("x", contributions, self.x_scale, plot_bounds, overflow),
+            _resolve_scale("y", contributions, self.y_scale, plot_bounds, overflow),
         )
         elements = tuple(self.content.lower(chart_context))
         if not all(isinstance(element, CanvasElement) for element in elements):
@@ -151,6 +152,7 @@ def _resolve_scale(
     contributions: tuple[DomainContribution, ...],
     specification: PositionScaleSpec | None,
     plot: Bounds,
+    overflow: ChartOverflow,
 ) -> ResolvedPositionScale:
     selected = tuple(item for item in contributions if item.channel == channel)
     kinds = {item.kind for item in selected}
@@ -174,8 +176,16 @@ def _resolve_scale(
         scale_spec = LinearScaleSpec(
             include_zero=any(item.include_zero for item in selected)
         )
-    start = plot.x if channel == "x" else plot.y + plot.height
-    end = plot.x + plot.width if channel == "x" else plot.y
+    start = (
+        plot.x + overflow.left
+        if channel == "x"
+        else plot.y + plot.height - overflow.bottom
+    )
+    end = (
+        plot.x + plot.width - overflow.right
+        if channel == "x"
+        else plot.y + overflow.top
+    )
     values = tuple(value for item in selected for value in item.values)
     if isinstance(scale_spec, LinearScaleSpec):
         numeric = tuple(float(cast(float, value)) for value in values)

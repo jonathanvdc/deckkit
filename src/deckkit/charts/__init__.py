@@ -4,6 +4,7 @@ from .axes import Axis
 from .chart import Chart, ChartInsets, PositionScaleSpec
 from .content import (
     ChartContent,
+    ChartOverflow,
     CompositeChartContent,
     DomainContribution,
     Value,
@@ -33,6 +34,7 @@ __all__ = [
     "ChartContent",
     "ChartContext",
     "ChartInsets",
+    "ChartOverflow",
     "CompositeChartContent",
     "DomainContribution",
     "LinearScale",
