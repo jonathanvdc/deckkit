@@ -16,6 +16,7 @@ from deckkit.canvas import (
     Rect,
     Stroke,
 )
+from deckkit.charts import Axis, BarMark, Chart, LinearScaleSpec, PointMark, value
 from deckkit.drawables import Bounds
 from deckkit.geometry import Point, RelativePoint
 from deckkit.themes import (
@@ -147,7 +148,7 @@ class PipelineSlide(TitleAndContentSlide):
 
 
 @dataclass(frozen=True)
-class Chart(CompositeView):
+class ChartPlaceholder(CompositeView):
     """Placeholder composition, not a charting engine."""
 
     def body(self, context):
@@ -167,7 +168,7 @@ class ResultsSlide(TitleAndContentSlide):
 
     def content(self, context):
         return HStack(
-            Chart()
+            ChartPlaceholder()
             .key("results")
             .flex()
             .animation(Animation.smooth(fallback=FallbackPolicy.DISCRETE))
@@ -219,9 +220,9 @@ def _canvas_demo(context: CanvasContext, size: CanvasSize) -> CanvasScene:
     )
 
     points = []
-    for index, value in enumerate(values):
+    for index, amount in enumerate(values):
         x = left + slot * index + (slot - bar_width) / 2
-        height = plot_height * value
+        height = plot_height * amount
         y = baseline - height
         center = Point(x + bar_width / 2, y)
         points.append(center)
@@ -282,6 +283,66 @@ class CanvasSlide(TitleAndContentSlide):
             .foreground_style(MutedColor),
             spacing=pt(18),
         )
+
+
+_COMPILER_RUNS = (
+    {"configuration": "Debug", "modules": 18, "seconds": 8.4},
+    {"configuration": "Debug", "modules": 31, "seconds": 12.1},
+    {"configuration": "Debug", "modules": 45, "seconds": 16.8},
+    {"configuration": "Release", "modules": 22, "seconds": 6.2},
+    {"configuration": "Release", "modules": 39, "seconds": 9.7},
+    {"configuration": "Release", "modules": 54, "seconds": 12.9},
+)
+
+
+class ScatterChartSlide(TitleAndContentSlide):
+    @property
+    def title(self):
+        return Text("Compile time in seconds by module count")
+
+    def content(self, context):
+        return Chart(
+            PointMark(
+                _COMPILER_RUNS,
+                x=value("Modules", lambda run: run["modules"]),
+                y=value("Compile time", lambda run: run["seconds"]),
+                radius=pt(5),
+                key=lambda run: f"{run['configuration']}:{run['modules']}",
+                series="compiler-runs",
+            ),
+            x_scale=LinearScaleSpec(domain=(15, 57)),
+            y_scale=LinearScaleSpec(domain=(5, 18)),
+            x_axis=Axis(title="Modules"),
+            y_axis=Axis(),
+        ).frame(width=pt(760), height=pt(330))
+
+
+_PASS_TIMES = (
+    {"pass": "Parse", "milliseconds": 38},
+    {"pass": "Lower", "milliseconds": 72},
+    {"pass": "Optimize", "milliseconds": 118},
+    {"pass": "Emit", "milliseconds": 54},
+)
+
+
+class BarChartSlide(TitleAndContentSlide):
+    @property
+    def title(self):
+        return Text("Time per compiler pass in milliseconds")
+
+    def content(self, context):
+        return Chart(
+            BarMark(
+                _PASS_TIMES,
+                x=value("Pass", lambda item: item["pass"]),
+                y=value("Duration", lambda item: item["milliseconds"]),
+                key=lambda item: item["pass"],
+                series="pass-duration",
+            ),
+            y_scale=LinearScaleSpec(domain=(0, 130)),
+            x_axis=Axis(title="Compiler pass"),
+            y_axis=Axis(),
+        ).frame(width=pt(760), height=pt(330))
 
 
 # G: future API sketch, intentionally not an implemented media runtime:

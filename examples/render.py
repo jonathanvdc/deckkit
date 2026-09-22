@@ -8,12 +8,14 @@ from deckkit.fonts import FileFontResolver, Font
 from deckkit.themes import ClarityTheme
 
 from .api_sketch import (
+    BarChartSlide,
     CanvasSlide,
     CodeSlide,
     ComparisonSlide,
     MetricsSlide,
     PipelineSlide,
     ResultsSlide,
+    ScatterChartSlide,
 )
 
 
@@ -37,6 +39,8 @@ def main() -> None:
             PipelineSlide(),
             ResultsSlide(),
             CanvasSlide(),
+            ScatterChartSlide(),
+            BarChartSlide(),
         ],
         theme=ClarityTheme(),
     )
