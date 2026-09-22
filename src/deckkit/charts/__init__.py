@@ -1,5 +1,6 @@
 """Declarative chart content and layout-independent chart specifications."""
 
+from .chart import Chart, ChartInsets, PositionScaleSpec
 from .content import (
     ChartContent,
     CompositeChartContent,
@@ -21,14 +22,17 @@ from .scales import (
 __all__ = [
     "BandScale",
     "BandScaleSpec",
+    "Chart",
     "ChartContent",
     "ChartContext",
+    "ChartInsets",
     "CompositeChartContent",
     "DomainContribution",
     "LinearScale",
     "LinearScaleSpec",
     "OrdinalScale",
     "OrdinalScaleSpec",
+    "PositionScaleSpec",
     "ResolvedPositionScale",
     "Value",
     "chart_content",

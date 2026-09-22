@@ -3,6 +3,7 @@ import pytest
 from deckkit.canvas import Rect
 from deckkit.charts import (
     BandScaleSpec,
+    Chart,
     ChartContent,
     CompositeChartContent,
     DomainContribution,
@@ -75,3 +76,45 @@ def test_value_encoding_extracts_typed_values():
 
     assert encoding({"amount": 42}) == 42
     assert encoding.label == "Amount"
+
+
+def test_chart_resolves_scales_in_final_frame_and_clips_content(compiler):
+    observed = []
+
+    class RecordingContent(ChartContent):
+        def domain_contributions(self):
+            return (
+                DomainContribution.categorical("x", ("a", "b")),
+                DomainContribution.quantitative("y", (10, 20)),
+            )
+
+        def lower(self, context):
+            observed.append(context)
+            return (Rect(context.plot_bounds, key="plot"),)
+
+    compiled = compiler.compile_view(
+        Chart(RecordingContent()).frame(width=pt(200), height=pt(100))
+    )
+
+    context = observed[-1]
+    assert context.plot_bounds == Bounds(pt(12), pt(12), pt(176), pt(76))
+    assert context.x_scale.domain == ("a", "b")
+    assert context.y_scale.domain == (10, 20)
+    assert any(node.identity.endswith("key:plot") for node in compiled.drawable.walk())
+
+
+def test_chart_rejects_mixed_domain_kinds(compiler):
+    class MixedContent(ChartContent):
+        def domain_contributions(self):
+            return (
+                DomainContribution.categorical("x", ("a",)),
+                DomainContribution.quantitative("x", (1,)),
+            )
+
+        def lower(self, context):
+            return ()
+
+    with pytest.raises(ValueError, match="mixes"):
+        compiler.compile_view(
+            Chart(MixedContent()).frame(width=pt(100), height=pt(100))
+        )
