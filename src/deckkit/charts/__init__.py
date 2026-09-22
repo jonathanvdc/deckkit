@@ -19,6 +19,9 @@ from .scales import (
     LinearScaleSpec,
     OrdinalScale,
     OrdinalScaleSpec,
+    nice_domain,
+    nice_step,
+    nice_ticks,
 )
 
 __all__ = [
@@ -41,5 +44,8 @@ __all__ = [
     "ResolvedPositionScale",
     "Value",
     "chart_content",
+    "nice_domain",
+    "nice_step",
+    "nice_ticks",
     "value",
 ]

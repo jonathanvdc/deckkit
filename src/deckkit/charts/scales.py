@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Hashable, Iterable
 from dataclasses import dataclass
-from math import isfinite
+from math import ceil, floor, isfinite, log10
 from typing import Generic, TypeVar
 
 from ..units import Length, pt, require_length
@@ -22,6 +22,12 @@ def _number(value: float) -> float:
 class LinearScaleSpec:
     domain: tuple[float, float] | None = None
     include_zero: bool = False
+    nice: bool = True
+    tick_count: int = 5
+
+    def __post_init__(self) -> None:
+        if self.tick_count < 2:
+            raise ValueError("Linear scale tick count must be at least two")
 
     def infer_domain(self, values: Iterable[float]) -> tuple[float, float]:
         inferred = tuple(_number(value) for value in values)
@@ -38,6 +44,8 @@ class LinearScaleSpec:
         if lower == upper:
             padding = abs(lower) * 0.05 or 0.5
             lower, upper = lower - padding, upper + padding
+        if self.nice and self.domain is None:
+            return nice_domain((lower, upper), self.tick_count)
         return lower, upper
 
     def resolve(
@@ -152,3 +160,46 @@ class OrdinalScale(Generic[Category, Output]):
         except ValueError as error:
             raise KeyError(value) from error
         return self.output[index % len(self.output)]
+
+
+def nice_domain(
+    domain: tuple[float, float], tick_count: int = 5
+) -> tuple[float, float]:
+    lower, upper = domain
+    step = nice_step(upper - lower, tick_count)
+    return (
+        _clean_number(floor(lower / step + 1e-10) * step),
+        _clean_number(ceil(upper / step - 1e-10) * step),
+    )
+
+
+def nice_ticks(domain: tuple[float, float], tick_count: int = 5) -> tuple[float, ...]:
+    lower, upper = domain
+    step = nice_step(upper - lower, tick_count)
+    first = ceil(lower / step) * step
+    last = floor(upper / step) * step
+    count = max(0, round((last - first) / step) + 1)
+    return tuple(_clean_number(first + index * step) for index in range(count))
+
+
+def nice_step(span: float, tick_count: int) -> float:
+    if not isfinite(span) or span <= 0:
+        raise ValueError("Tick span must be positive and finite")
+    if tick_count < 2:
+        raise ValueError("Tick count must be at least two")
+    rough = span / (tick_count - 1)
+    magnitude = 10.0 ** floor(log10(rough))
+    normalized = rough / magnitude
+    if normalized >= 50**0.5:
+        factor = 10.0
+    elif normalized >= 10**0.5:
+        factor = 5.0
+    elif normalized >= 2**0.5:
+        factor = 2.0
+    else:
+        factor = 1.0
+    return factor * magnitude
+
+
+def _clean_number(value: float) -> float:
+    return 0.0 if abs(value) < 1e-12 else float(f"{value:.12g}")

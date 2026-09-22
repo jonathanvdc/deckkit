@@ -9,7 +9,7 @@ from ..geometry import Point
 from ..theme import MutedColor
 from ..units import Length, pt
 from .context import ResolvedPositionScale
-from .scales import BandScale, LinearScale
+from .scales import BandScale, LinearScale, nice_ticks
 
 
 def _format_tick(value: object) -> str:
@@ -130,9 +130,7 @@ def lower_axes(
 def _ticks(scale: ResolvedPositionScale, axis: Axis) -> tuple[float | Hashable, ...]:
     if isinstance(scale, BandScale):
         return scale.domain
-    lower, upper = scale.domain
-    step = (upper - lower) / (axis.tick_count - 1)
-    return tuple(lower + step * index for index in range(axis.tick_count))
+    return nice_ticks(scale.domain, axis.tick_count)
 
 
 def _tick_labels(scale: ResolvedPositionScale, axis: Axis) -> tuple[str, ...]:

@@ -13,6 +13,7 @@ from deckkit.charts import (
     LinearScaleSpec,
     OrdinalScaleSpec,
     PointMark,
+    nice_ticks,
     value,
 )
 from deckkit.drawables import Bounds, DrawableEllipse, DrawableRectangle
@@ -39,6 +40,14 @@ def test_linear_scale_infers_expands_and_reverses_domains():
     assert scale(3) == pt(50)
     assert scale(6) == pt(0)
     assert LinearScaleSpec().infer_domain((4, 4)) == (3.8, 4.2)
+
+
+def test_linear_scale_expands_to_nice_domain_and_plans_round_ticks():
+    scale = LinearScaleSpec().resolve((18, 54), (pt(0), pt(100)))
+
+    assert scale.domain == (10, 60)
+    assert nice_ticks(scale.domain) == (10, 20, 30, 40, 50, 60)
+    assert nice_ticks((6.2, 16.8)) == (8, 10, 12, 14, 16)
 
 
 def test_linear_scale_rejects_invalid_values_and_domains():
