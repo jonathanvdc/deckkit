@@ -1,7 +1,28 @@
 import pytest
 
-from deckkit.charts import BandScaleSpec, LinearScaleSpec, OrdinalScaleSpec
+from deckkit.canvas import Rect
+from deckkit.charts import (
+    BandScaleSpec,
+    ChartContent,
+    CompositeChartContent,
+    DomainContribution,
+    LinearScaleSpec,
+    OrdinalScaleSpec,
+    value,
+)
+from deckkit.drawables import Bounds
 from deckkit.units import pt
+
+
+class SampleContent(ChartContent):
+    def __init__(self, key: str):
+        self.key = key
+
+    def domain_contributions(self):
+        return (DomainContribution.quantitative("x", (1, 2)),)
+
+    def lower(self, context):
+        return (Rect(Bounds(pt(0), pt(0), pt(1), pt(1)), key=self.key),)
 
 
 def test_linear_scale_infers_expands_and_reverses_domains():
@@ -41,3 +62,16 @@ def test_ordinal_scale_cycles_outputs_over_inferred_domain():
     assert scale("a") == "red"
     assert scale("b") == "blue"
     assert scale("c") == "red"
+
+
+def test_chart_content_composes_domains_and_canvas_elements():
+    content = CompositeChartContent(SampleContent("a"), SampleContent("b"))
+
+    assert [item.values for item in content.domain_contributions()] == [(1, 2), (1, 2)]
+
+
+def test_value_encoding_extracts_typed_values():
+    encoding = value("Amount", lambda row: row["amount"])
+
+    assert encoding({"amount": 42}) == 42
+    assert encoding.label == "Amount"
