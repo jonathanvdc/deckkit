@@ -221,6 +221,31 @@ def test_point_mark_insets_scale_range_for_rendered_radius(compiler):
     assert observed[-1].x_scale(0) == observed[-1].plot_bounds.x + pt(6)
 
 
+def test_color_encoding_resolves_series_colors_and_measured_legend(compiler):
+    data = (
+        {"series": "Debug", "x": 1, "y": 2},
+        {"series": "Release", "x": 2, "y": 3},
+    )
+    mark = PointMark(
+        data,
+        x=value("X", lambda row: row["x"]),
+        y=value("Y", lambda row: row["y"]),
+        color=value("Configuration", lambda row: row["series"]),
+    )
+    compiled = compiler.compile_view(
+        Chart(mark, x_axis=None, y_axis=None).frame(width=pt(240), height=pt(100))
+    )
+    points = [
+        node for node in compiled.drawable.walk() if isinstance(node, DrawableEllipse)
+    ]
+    markup = svg.render(compiled.drawable)
+
+    assert points[0].fill != points[1].fill
+    assert "Configuration" in markup
+    assert "Debug" in markup
+    assert "Release" in markup
+
+
 @pytest.mark.parametrize(
     ("orientation", "expected_count"),
     (("vertical", 2), ("horizontal", 2)),

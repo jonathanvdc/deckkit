@@ -1,7 +1,7 @@
 """Declarative chart content and layout-independent chart specifications."""
 
 from .axes import Axis
-from .chart import Chart, ChartInsets, PositionScaleSpec
+from .chart import Chart, ChartInsets, ColorScaleSpec, PositionScaleSpec
 from .content import (
     ChartContent,
     ChartOverflow,
@@ -12,6 +12,7 @@ from .content import (
     value,
 )
 from .context import ChartContext, ResolvedPositionScale
+from .legends import Legend
 from .marks import BarMark, PointMark
 from .scales import (
     BandScale,
@@ -35,8 +36,10 @@ __all__ = [
     "ChartContext",
     "ChartInsets",
     "ChartOverflow",
+    "ColorScaleSpec",
     "CompositeChartContent",
     "DomainContribution",
+    "Legend",
     "LinearScale",
     "LinearScaleSpec",
     "OrdinalScale",

@@ -10,6 +10,7 @@ from ..canvas.clipping import clip_drawable
 from ..context import Context
 from ..drawables import Bounds, Drawable, DrawableMetadata
 from ..geometry import Point
+from ..theme import AccentColor, Color, ColorStyle, MutedColor, PrimaryColor
 from ..units import Length, pt, require_length
 from ..views.canvas import Canvas
 from ..views.composite_view import CompositeView
@@ -17,9 +18,11 @@ from ..views.view import View
 from .axes import DEFAULT_AXIS, Axis, lower_axes, required_axis_space
 from .content import ChartContent, ChartOverflow, DomainContribution, chart_content
 from .context import ChartContext, ResolvedPositionScale
-from .scales import BandScaleSpec, LinearScaleSpec
+from .legends import DEFAULT_LEGEND, Legend, lower_legend, required_legend_width
+from .scales import BandScaleSpec, LinearScaleSpec, OrdinalScale, OrdinalScaleSpec
 
 PositionScaleSpec = Union[LinearScaleSpec, BandScaleSpec[Hashable]]
+ColorScaleSpec = OrdinalScaleSpec[Hashable, ColorStyle]
 
 
 @dataclass(frozen=True)
@@ -41,18 +44,22 @@ class Chart(CompositeView):
     content: ChartContent
     x_scale: PositionScaleSpec | None
     y_scale: PositionScaleSpec | None
+    color_scale: ColorScaleSpec | None
     plot_insets: ChartInsets
     x_axis: Axis | None
     y_axis: Axis | None
+    legend: Legend | None
 
     def __init__(
         self,
         *content: ChartContent,
         x_scale: PositionScaleSpec | None = None,
         y_scale: PositionScaleSpec | None = None,
+        color_scale: ColorScaleSpec | None = None,
         plot_insets: ChartInsets | None = None,
         x_axis: Axis | None = DEFAULT_AXIS,
         y_axis: Axis | None = DEFAULT_AXIS,
+        legend: Legend | None = DEFAULT_LEGEND,
     ) -> None:
         if not content:
             raise ValueError("Chart requires at least one ChartContent value")
@@ -62,9 +69,11 @@ class Chart(CompositeView):
         object.__setattr__(self, "content", chart_content(content))
         object.__setattr__(self, "x_scale", x_scale)
         object.__setattr__(self, "y_scale", y_scale)
+        object.__setattr__(self, "color_scale", color_scale)
         object.__setattr__(self, "plot_insets", resolved_insets)
         object.__setattr__(self, "x_axis", x_axis)
         object.__setattr__(self, "y_axis", y_axis)
+        object.__setattr__(self, "legend", legend)
 
     def body(self, context: Context) -> View:
         return Canvas(self._render)
@@ -72,7 +81,25 @@ class Chart(CompositeView):
     def _render(self, canvas: CanvasContext, size: CanvasSize) -> CanvasScene:
         contributions = tuple(self.content.domain_contributions())
         overflow = self.content.overflow()
-        provisional_plot = _plot_bounds(size, self.plot_insets)
+        resolved_color = _resolve_color_scale(contributions, self.color_scale)
+        color_title = next(
+            (
+                contribution.label
+                for contribution in contributions
+                if contribution.channel == "color" and contribution.label
+            ),
+            None,
+        )
+        legend_width = required_legend_width(
+            canvas, resolved_color, self.legend, color_title
+        )
+        insets_with_legend = ChartInsets(
+            self.plot_insets.top,
+            self.plot_insets.right + legend_width,
+            self.plot_insets.bottom,
+            self.plot_insets.left,
+        )
+        provisional_plot = _plot_bounds(size, insets_with_legend)
         provisional_x = _resolve_scale(
             "x", contributions, self.x_scale, provisional_plot, overflow
         )
@@ -85,10 +112,10 @@ class Chart(CompositeView):
         plot_bounds = _plot_bounds(
             size,
             ChartInsets(
-                self.plot_insets.top,
-                self.plot_insets.right,
-                self.plot_insets.bottom + bottom,
-                self.plot_insets.left + left,
+                insets_with_legend.top,
+                insets_with_legend.right,
+                insets_with_legend.bottom + bottom,
+                insets_with_legend.left + left,
             ),
         )
         chart_context = ChartContext(
@@ -96,6 +123,7 @@ class Chart(CompositeView):
             plot_bounds,
             _resolve_scale("x", contributions, self.x_scale, plot_bounds, overflow),
             _resolve_scale("y", contributions, self.y_scale, plot_bounds, overflow),
+            resolved_color,
         )
         elements = tuple(self.content.lower(chart_context))
         if not all(isinstance(element, CanvasElement) for element in elements):
@@ -111,7 +139,10 @@ class Chart(CompositeView):
             self.x_axis,
             self.y_axis,
         )
-        return CanvasScene(*axes, *clipped)
+        legend_elements = lower_legend(
+            canvas, plot_bounds, resolved_color, self.legend, color_title
+        )
+        return CanvasScene(*axes, *clipped, *legend_elements)
 
 
 @dataclass(frozen=True)
@@ -191,3 +222,23 @@ def _resolve_scale(
         numeric = tuple(float(cast(float, value)) for value in values)
         return scale_spec.resolve(numeric, (start, end))
     return scale_spec.resolve(values, (start, end))
+
+
+def _resolve_color_scale(
+    contributions: tuple[DomainContribution, ...],
+    specification: ColorScaleSpec | None,
+) -> OrdinalScale[Hashable, ColorStyle] | None:
+    selected = tuple(item for item in contributions if item.channel == "color")
+    if not selected:
+        return None
+    values = tuple(value for item in selected for value in item.values)
+    scale_spec = specification or OrdinalScaleSpec(
+        (
+            AccentColor,
+            PrimaryColor,
+            MutedColor,
+            Color("#D97706"),
+            Color("#7C3AED"),
+        )
+    )
+    return scale_spec.resolve(values)

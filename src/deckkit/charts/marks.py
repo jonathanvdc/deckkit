@@ -22,6 +22,7 @@ class PointMark(ChartContent, Generic[Datum]):
     data: tuple[Datum, ...]
     x: Value[Datum, PositionValue]
     y: Value[Datum, PositionValue]
+    color: Value[Datum, Hashable] | None = None
     fill: StyleValue[Datum] = AccentColor
     radius: RadiusValue[Datum] = pt(3)
     key: Callable[[Datum], str | int] | None = None
@@ -35,6 +36,7 @@ class PointMark(ChartContent, Generic[Datum]):
         *,
         x: Value[Datum, PositionValue],
         y: Value[Datum, PositionValue],
+        color: Value[Datum, Hashable] | None = None,
         fill: StyleValue[Datum] = AccentColor,
         radius: RadiusValue[Datum] = pt(3),
         key: Callable[[Datum], str | int] | None = None,
@@ -45,6 +47,7 @@ class PointMark(ChartContent, Generic[Datum]):
         object.__setattr__(self, "data", tuple(data))
         object.__setattr__(self, "x", x)
         object.__setattr__(self, "y", y)
+        object.__setattr__(self, "color", color)
         object.__setattr__(self, "fill", fill)
         object.__setattr__(self, "radius", radius)
         object.__setattr__(self, "key", key)
@@ -63,9 +66,19 @@ class PointMark(ChartContent, Generic[Datum]):
     def domain_contributions(self) -> tuple[DomainContribution, ...]:
         x_values = tuple(self.x(datum) for datum in self.data)
         y_values = tuple(self.y(datum) for datum in self.data)
-        return (
+        position = (
             _contribution("x", x_values, self.x_kind),
             _contribution("y", y_values, self.y_kind),
+        )
+        if self.color is None:
+            return position
+        return (
+            *position,
+            DomainContribution.categorical(
+                "color",
+                (self.color(datum) for datum in self.data),
+                label=self.color.label,
+            ),
         )
 
     def overflow(self) -> ChartOverflow:
@@ -83,7 +96,13 @@ class PointMark(ChartContent, Generic[Datum]):
             require_length(radius)
             if radius <= pt(0):
                 raise ValueError("PointMark radius must be positive")
-            fill = self.fill(datum) if callable(self.fill) else self.fill
+            fill = (
+                context.color(self.color(datum))
+                if self.color is not None
+                else self.fill(datum)
+                if callable(self.fill)
+                else self.fill
+            )
             center_x = context.center("x", self.x(datum))
             center_y = context.center("y", self.y(datum))
             result.append(
@@ -108,6 +127,7 @@ class BarMark(ChartContent, Generic[Datum]):
     data: tuple[Datum, ...]
     x: Value[Datum, PositionValue]
     y: Value[Datum, PositionValue]
+    color: Value[Datum, Hashable] | None
     orientation: Literal["vertical", "horizontal"]
     baseline: float
     fill: StyleValue[Datum]
@@ -120,6 +140,7 @@ class BarMark(ChartContent, Generic[Datum]):
         *,
         x: Value[Datum, PositionValue],
         y: Value[Datum, PositionValue],
+        color: Value[Datum, Hashable] | None = None,
         orientation: Literal["vertical", "horizontal"] = "vertical",
         baseline: float = 0,
         fill: StyleValue[Datum] = AccentColor,
@@ -131,6 +152,7 @@ class BarMark(ChartContent, Generic[Datum]):
         object.__setattr__(self, "data", tuple(data))
         object.__setattr__(self, "x", x)
         object.__setattr__(self, "y", y)
+        object.__setattr__(self, "color", color)
         object.__setattr__(self, "orientation", orientation)
         object.__setattr__(self, "baseline", float(baseline))
         object.__setattr__(self, "fill", fill)
@@ -147,19 +169,36 @@ class BarMark(ChartContent, Generic[Datum]):
         x_values = tuple(self.x(datum) for datum in self.data)
         y_values = tuple(self.y(datum) for datum in self.data)
         if self.orientation == "vertical":
-            return (
+            position = (
                 _contribution("x", x_values, "categorical"),
                 _quantitative_with_baseline("y", y_values, self.baseline),
             )
+        else:
+            position = (
+                _quantitative_with_baseline("x", x_values, self.baseline),
+                _contribution("y", y_values, "categorical"),
+            )
+        if self.color is None:
+            return position
         return (
-            _quantitative_with_baseline("x", x_values, self.baseline),
-            _contribution("y", y_values, "categorical"),
+            *position,
+            DomainContribution.categorical(
+                "color",
+                (self.color(datum) for datum in self.data),
+                label=self.color.label,
+            ),
         )
 
     def lower(self, context: ChartContext) -> Iterable[CanvasElement]:
         result: list[CanvasElement] = []
         for datum in self.data:
-            fill = self.fill(datum) if callable(self.fill) else self.fill
+            fill = (
+                context.color(self.color(datum))
+                if self.color is not None
+                else self.fill(datum)
+                if callable(self.fill)
+                else self.fill
+            )
             if self.orientation == "vertical":
                 x = context.position("x", self.x(datum))
                 width = context.bandwidth("x")

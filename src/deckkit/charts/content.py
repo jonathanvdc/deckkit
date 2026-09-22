@@ -11,7 +11,7 @@ from .context import ChartContext
 
 Datum = TypeVar("Datum")
 ValueType = TypeVar("ValueType")
-Channel = Literal["x", "y"]
+Channel = Literal["x", "y", "color"]
 DomainKind = Literal["quantitative", "categorical"]
 
 
@@ -42,6 +42,7 @@ class DomainContribution:
     kind: DomainKind
     values: tuple[float | Hashable, ...]
     include_zero: bool = False
+    label: str | None = None
 
     @classmethod
     def quantitative(
@@ -50,14 +51,15 @@ class DomainContribution:
         values: Iterable[float],
         *,
         include_zero: bool = False,
+        label: str | None = None,
     ) -> DomainContribution:
-        return cls(channel, "quantitative", tuple(values), include_zero)
+        return cls(channel, "quantitative", tuple(values), include_zero, label)
 
     @classmethod
     def categorical(
-        cls, channel: Channel, values: Iterable[Hashable]
+        cls, channel: Channel, values: Iterable[Hashable], *, label: str | None = None
     ) -> DomainContribution:
-        return cls(channel, "categorical", tuple(values))
+        return cls(channel, "categorical", tuple(values), label=label)
 
 
 @dataclass(frozen=True)
