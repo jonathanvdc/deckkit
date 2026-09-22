@@ -4,9 +4,10 @@ from collections.abc import Callable, Hashable, Iterable
 from dataclasses import dataclass
 from typing import Generic, Literal, TypeVar, Union, cast
 
-from ..canvas import CanvasElement, Ellipse, Rect
+from ..canvas import CanvasElement, CanvasText, Ellipse, Rect
 from ..drawables import Bounds
-from ..theme import AccentColor, ColorStyle
+from ..geometry import Point
+from ..theme import AccentColor, ChartDataLabelTextStyle, ColorStyle, PrimaryColor
 from ..units import Length, pt, require_length
 from .content import ChartContent, ChartOverflow, DomainContribution, DomainKind, Value
 from .context import ChartContext
@@ -133,6 +134,7 @@ class BarMark(ChartContent, Generic[Datum]):
     fill: StyleValue[Datum]
     key: Callable[[Datum], str | int] | None
     series: str
+    label: Callable[[Datum], str] | None
 
     def __init__(
         self,
@@ -146,6 +148,7 @@ class BarMark(ChartContent, Generic[Datum]):
         fill: StyleValue[Datum] = AccentColor,
         key: Callable[[Datum], str | int] | None = None,
         series: str | None = None,
+        label: Callable[[Datum], str] | None = None,
     ) -> None:
         if orientation not in ("vertical", "horizontal"):
             raise ValueError("BarMark orientation must be vertical or horizontal")
@@ -157,6 +160,7 @@ class BarMark(ChartContent, Generic[Datum]):
         object.__setattr__(self, "baseline", float(baseline))
         object.__setattr__(self, "fill", fill)
         object.__setattr__(self, "key", key)
+        object.__setattr__(self, "label", label)
         object.__setattr__(
             self,
             "series",
@@ -164,6 +168,8 @@ class BarMark(ChartContent, Generic[Datum]):
         )
         if key is not None and not callable(key):
             raise TypeError("BarMark key must be callable")
+        if label is not None and not callable(label):
+            raise TypeError("BarMark label must be callable")
 
     def domain_contributions(self) -> tuple[DomainContribution, ...]:
         x_values = tuple(self.x(datum) for datum in self.data)
@@ -222,7 +228,35 @@ class BarMark(ChartContent, Generic[Datum]):
                     key=_datum_key(self.series, self.key(datum)) if self.key else None,
                 )
             )
+            if self.label is not None:
+                if self.orientation == "vertical":
+                    position = Point(x + width / 2, min(value, baseline) - pt(4))
+                    horizontal_alignment: Literal["left", "center", "right"] = "center"
+                    vertical_alignment: Literal["top", "center", "bottom"] = "bottom"
+                else:
+                    position = Point(max(value, baseline) + pt(4), y + height / 2)
+                    horizontal_alignment = "left"
+                    vertical_alignment = "center"
+                result.append(
+                    CanvasText(
+                        self.label(datum),
+                        position,
+                        typography=ChartDataLabelTextStyle,
+                        color=PrimaryColor,
+                        horizontal_alignment=horizontal_alignment,
+                        vertical_alignment=vertical_alignment,
+                    )
+                )
         return tuple(result)
+
+    def overflow(self) -> ChartOverflow:
+        if self.label is None:
+            return ChartOverflow()
+        return (
+            ChartOverflow(top=pt(18))
+            if self.orientation == "vertical"
+            else ChartOverflow(right=pt(48))
+        )
 
 
 def _contribution(

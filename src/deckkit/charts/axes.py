@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Callable, Hashable
 from dataclasses import dataclass
+from math import ceil, isfinite
+from typing import Literal
 
 from ..canvas import CanvasContext, CanvasElement, CanvasText, Line, Stroke
 from ..drawables import Bounds
@@ -27,12 +29,18 @@ class Axis:
     tick_count: int = 5
     formatter: Callable[[object], str] = _format_tick
     grid: bool = True
+    label_policy: Literal["automatic", "all"] = "automatic"
+    label_rotation: float = 0.0
 
     def __post_init__(self) -> None:
         if self.tick_count < 2:
             raise ValueError("Axis tick count must be at least two")
         if not callable(self.formatter):
             raise TypeError("Axis formatter must be callable")
+        if self.label_policy not in ("automatic", "all"):
+            raise ValueError("Axis label policy must be automatic or all")
+        if not isfinite(self.label_rotation):
+            raise ValueError("Axis label rotation must be finite")
 
 
 DEFAULT_AXIS = Axis()
@@ -48,17 +56,25 @@ def required_axis_space(
     bottom = pt(0)
     left = pt(0)
     if x_axis is not None:
-        labels = _tick_labels(x_scale, x_axis)
+        labels = tuple(label for _, label in _tick_items(canvas, x_scale, x_axis, "x"))
         bottom = max(
-            (_measure_tick(canvas, label).height for label in labels), default=pt(0)
+            (
+                _measure_tick(canvas, label, x_axis.label_rotation).height
+                for label in labels
+            ),
+            default=pt(0),
         )
         bottom += pt(8)
         if x_axis.title:
             bottom += _measure_title(canvas, x_axis.title).height + pt(4)
     if y_axis is not None:
-        labels = _tick_labels(y_scale, y_axis)
+        labels = tuple(label for _, label in _tick_items(canvas, y_scale, y_axis, "y"))
         left = max(
-            (_measure_tick(canvas, label).width for label in labels), default=pt(0)
+            (
+                _measure_tick(canvas, label, y_axis.label_rotation).width
+                for label in labels
+            ),
+            default=pt(0),
         )
         left += pt(8)
         if y_axis.title:
@@ -86,7 +102,7 @@ def lower_axes(
                 axis_stroke,
             )
         )
-        for value, label in zip(_ticks(x_scale, x_axis), _tick_labels(x_scale, x_axis)):
+        for value, label in _tick_items(canvas, x_scale, x_axis, "x"):
             x = _position(x_scale, value)
             if x_axis.grid and plot.x < x < plot.x + plot.width:
                 result.append(Line(Point(x, plot.y), Point(x, baseline), grid_stroke))
@@ -100,13 +116,14 @@ def lower_axes(
                     typography=ChartTickTextStyle,
                     color=ChartAxisColor,
                     horizontal_alignment="center",
+                    rotation=x_axis.label_rotation,
                 )
             )
         if x_axis.title:
             tick_height = max(
                 (
                     _measure_tick(canvas, label).height
-                    for label in _tick_labels(x_scale, x_axis)
+                    for _, label in _tick_items(canvas, x_scale, x_axis, "x")
                 ),
                 default=pt(0),
             )
@@ -130,7 +147,7 @@ def lower_axes(
                 axis_stroke,
             )
         )
-        for value, label in zip(_ticks(y_scale, y_axis), _tick_labels(y_scale, y_axis)):
+        for value, label in _tick_items(canvas, y_scale, y_axis, "y"):
             y = _position(y_scale, value)
             if y_axis.grid and plot.y < y < plot.y + plot.height:
                 result.append(
@@ -145,13 +162,14 @@ def lower_axes(
                     color=ChartAxisColor,
                     horizontal_alignment="right",
                     vertical_alignment="center",
+                    rotation=y_axis.label_rotation,
                 )
             )
         if y_axis.title:
             label_width = max(
                 (
                     _measure_tick(canvas, label).width
-                    for label in _tick_labels(y_scale, y_axis)
+                    for _, label in _tick_items(canvas, y_scale, y_axis, "y")
                 ),
                 default=pt(0),
             )
@@ -185,6 +203,30 @@ def _tick_labels(scale: ResolvedPositionScale, axis: Axis) -> tuple[str, ...]:
     return tuple(axis.formatter(value) for value in _ticks(scale, axis))
 
 
+def _tick_items(
+    canvas: CanvasContext,
+    scale: ResolvedPositionScale,
+    axis: Axis,
+    channel: Literal["x", "y"],
+) -> tuple[tuple[float | Hashable, str], ...]:
+    items = tuple(zip(_ticks(scale, axis), _tick_labels(scale, axis)))
+    if not isinstance(scale, BandScale) or axis.label_policy == "all" or not items:
+        return items
+    extent = max(
+        (
+            _measure_tick(canvas, label, axis.label_rotation).width
+            if channel == "x"
+            else _measure_tick(canvas, label, axis.label_rotation).height
+            for _, label in items
+        ),
+        default=pt(0),
+    )
+    if scale.step <= pt(0):
+        return items
+    stride = max(1, ceil((extent + pt(6)).points / scale.step.points))
+    return items[::stride]
+
+
 def _position(scale: ResolvedPositionScale, value: float | Hashable) -> Length:
     if isinstance(scale, LinearScale):
         assert isinstance(value, (int, float))
@@ -192,9 +234,12 @@ def _position(scale: ResolvedPositionScale, value: float | Hashable) -> Length:
     return scale.center(value)
 
 
-def _measure_tick(canvas: CanvasContext, text: str) -> Bounds:
+def _measure_tick(canvas: CanvasContext, text: str, rotation: float = 0.0) -> Bounds:
     return CanvasText(
-        text, Point(pt(0), pt(0)), typography=ChartTickTextStyle
+        text,
+        Point(pt(0), pt(0)),
+        typography=ChartTickTextStyle,
+        rotation=rotation,
     ).measured_anchor_bounds(canvas)
 
 

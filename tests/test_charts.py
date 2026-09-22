@@ -16,7 +16,7 @@ from deckkit.charts import (
     nice_ticks,
     value,
 )
-from deckkit.drawables import Bounds, DrawableEllipse, DrawableRectangle
+from deckkit.drawables import Bounds, DrawableEllipse, DrawableRectangle, DrawableText
 from deckkit.theme import Color
 from deckkit.units import pt
 
@@ -282,3 +282,41 @@ def test_bar_mark_lowers_vertical_and_horizontal_bars(
     assert len(bars) == expected_count
     assert all(bar.bounds.width > pt(0) and bar.bounds.height > pt(0) for bar in bars)
     assert bars[0].identity.endswith("key:series:Amount/datum:A")
+
+
+def test_bar_mark_lowers_optional_data_labels(compiler):
+    mark = BarMark(
+        ({"name": "A", "amount": 40},),
+        x=value("Name", lambda row: row["name"]),
+        y=value("Amount", lambda row: row["amount"]),
+        label=lambda row: f"{row['amount']} ms",
+    )
+    compiled = compiler.compile_view(
+        Chart(mark, x_axis=None, y_axis=None).frame(width=pt(160), height=pt(100))
+    )
+
+    assert any(
+        isinstance(node, DrawableText) and node.text == "40 ms"
+        for node in compiled.drawable.walk()
+    )
+
+
+def test_band_axis_automatically_skips_overlapping_labels(compiler):
+    categories = tuple(
+        {"name": f"Long category {index}", "amount": index + 1} for index in range(8)
+    )
+    mark = BarMark(
+        categories,
+        x=value("Name", lambda row: row["name"]),
+        y=value("Amount", lambda row: row["amount"]),
+    )
+    compiled = compiler.compile_view(
+        Chart(mark, y_axis=None).frame(width=pt(180), height=pt(100))
+    )
+    labels = [
+        node
+        for node in compiled.drawable.walk()
+        if isinstance(node, DrawableText) and node.text.startswith("Long category")
+    ]
+
+    assert 0 < len(labels) < len(categories)
