@@ -1,7 +1,9 @@
 import pytest
 
+from deckkit.backends import svg
 from deckkit.canvas import Rect
 from deckkit.charts import (
+    Axis,
     BandScaleSpec,
     Chart,
     ChartContent,
@@ -93,7 +95,9 @@ def test_chart_resolves_scales_in_final_frame_and_clips_content(compiler):
             return (Rect(context.plot_bounds, key="plot"),)
 
     compiled = compiler.compile_view(
-        Chart(RecordingContent()).frame(width=pt(200), height=pt(100))
+        Chart(RecordingContent(), x_axis=None, y_axis=None).frame(
+            width=pt(200), height=pt(100)
+        )
     )
 
     context = observed[-1]
@@ -118,3 +122,30 @@ def test_chart_rejects_mixed_domain_kinds(compiler):
         compiler.compile_view(
             Chart(MixedContent()).frame(width=pt(100), height=pt(100))
         )
+
+
+def test_chart_axes_measure_labels_and_lower_outside_plot_clip(compiler):
+    observed = []
+
+    class AxisContent(ChartContent):
+        def domain_contributions(self):
+            return (
+                DomainContribution.categorical("x", ("First", "Second")),
+                DomainContribution.quantitative("y", (0, 100)),
+            )
+
+        def lower(self, context):
+            observed.append(context)
+            return ()
+
+    compiled = compiler.compile_view(
+        Chart(AxisContent(), x_axis=Axis(title="Category"), y_axis=Axis()).frame(
+            width=pt(240), height=pt(140)
+        )
+    )
+    markup = svg.render(compiled.drawable)
+
+    assert observed[-1].plot_bounds.x > pt(12)
+    assert observed[-1].plot_bounds.height < pt(116)
+    assert "First" in markup
+    assert "Category" in markup

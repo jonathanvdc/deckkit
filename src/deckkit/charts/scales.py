@@ -99,6 +99,10 @@ class BandScale(Generic[Category]):
 
     @property
     def step(self) -> Length:
+        return -self._signed_step if self._signed_step < pt(0) else self._signed_step
+
+    @property
+    def _signed_step(self) -> Length:
         if not self.domain:
             return pt(0)
         extent = self.output[1] - self.output[0]
@@ -114,7 +118,10 @@ class BandScale(Generic[Category]):
             index = self.domain.index(value)
         except ValueError as error:
             raise KeyError(value) from error
-        return self.output[0] + self.step * (self.padding_outer + index)
+        offset = self.padding_outer + index
+        if self._signed_step < pt(0):
+            offset += 1 - self.padding_inner
+        return self.output[0] + self._signed_step * offset
 
     def center(self, value: Category) -> Length:
         return self(value) + self.bandwidth / 2

@@ -1,16 +1,20 @@
 from __future__ import annotations
 
 from collections.abc import Hashable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Union, cast
 
 from ..canvas import CanvasContext, CanvasElement, CanvasScene, CanvasSize
+from ..canvas._geometry import translate_bounds
+from ..canvas.clipping import clip_drawable
 from ..context import Context
-from ..drawables import Bounds
+from ..drawables import Bounds, Drawable, DrawableMetadata
+from ..geometry import Point
 from ..units import Length, pt, require_length
 from ..views.canvas import Canvas
 from ..views.composite_view import CompositeView
 from ..views.view import View
+from .axes import DEFAULT_AXIS, Axis, lower_axes, required_axis_space
 from .content import ChartContent, DomainContribution, chart_content
 from .context import ChartContext, ResolvedPositionScale
 from .scales import BandScaleSpec, LinearScaleSpec
@@ -38,6 +42,8 @@ class Chart(CompositeView):
     x_scale: PositionScaleSpec | None
     y_scale: PositionScaleSpec | None
     plot_insets: ChartInsets
+    x_axis: Axis | None
+    y_axis: Axis | None
 
     def __init__(
         self,
@@ -45,6 +51,8 @@ class Chart(CompositeView):
         x_scale: PositionScaleSpec | None = None,
         y_scale: PositionScaleSpec | None = None,
         plot_insets: ChartInsets | None = None,
+        x_axis: Axis | None = DEFAULT_AXIS,
+        y_axis: Axis | None = DEFAULT_AXIS,
     ) -> None:
         if not content:
             raise ValueError("Chart requires at least one ChartContent value")
@@ -55,13 +63,33 @@ class Chart(CompositeView):
         object.__setattr__(self, "x_scale", x_scale)
         object.__setattr__(self, "y_scale", y_scale)
         object.__setattr__(self, "plot_insets", resolved_insets)
+        object.__setattr__(self, "x_axis", x_axis)
+        object.__setattr__(self, "y_axis", y_axis)
 
     def body(self, context: Context) -> View:
         return Canvas(self._render)
 
     def _render(self, canvas: CanvasContext, size: CanvasSize) -> CanvasScene:
-        plot_bounds = _plot_bounds(size, self.plot_insets)
         contributions = tuple(self.content.domain_contributions())
+        provisional_plot = _plot_bounds(size, self.plot_insets)
+        provisional_x = _resolve_scale(
+            "x", contributions, self.x_scale, provisional_plot
+        )
+        provisional_y = _resolve_scale(
+            "y", contributions, self.y_scale, provisional_plot
+        )
+        bottom, left = required_axis_space(
+            canvas, provisional_x, provisional_y, self.x_axis, self.y_axis
+        )
+        plot_bounds = _plot_bounds(
+            size,
+            ChartInsets(
+                self.plot_insets.top,
+                self.plot_insets.right,
+                self.plot_insets.bottom + bottom,
+                self.plot_insets.left + left,
+            ),
+        )
         chart_context = ChartContext(
             canvas,
             plot_bounds,
@@ -71,7 +99,41 @@ class Chart(CompositeView):
         elements = tuple(self.content.lower(chart_context))
         if not all(isinstance(element, CanvasElement) for element in elements):
             raise TypeError("Chart content must lower to CanvasElement values")
-        return CanvasScene(*elements, clip=plot_bounds)
+        clipped = tuple(
+            _ClippedChartElement(element, plot_bounds) for element in elements
+        )
+        axes = lower_axes(
+            plot_bounds,
+            chart_context.x_scale,
+            chart_context.y_scale,
+            self.x_axis,
+            self.y_axis,
+        )
+        return CanvasScene(*axes, *clipped)
+
+
+@dataclass(frozen=True)
+class _ClippedChartElement(CanvasElement):
+    element: CanvasElement
+    clip: Bounds
+    key: str | None = field(init=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "key", self.element.key)
+
+    @property
+    def anchor_bounds(self) -> Bounds:
+        return self.element.anchor_bounds
+
+    def make_drawable(
+        self,
+        identity: str,
+        origin: Point,
+        context: CanvasContext,
+        metadata: DrawableMetadata,
+    ) -> Drawable:
+        drawable = self.element.make_drawable(identity, origin, context, metadata)
+        return clip_drawable(drawable, translate_bounds(self.clip, origin))
 
 
 def _plot_bounds(size: CanvasSize, insets: ChartInsets) -> Bounds:
