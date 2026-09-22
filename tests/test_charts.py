@@ -161,6 +161,7 @@ def test_chart_axes_measure_labels_and_lower_outside_plot_clip(compiler):
     assert observed[-1].plot_bounds.height < pt(116)
     assert "First" in markup
     assert "Category" in markup
+    assert 'font-size="14.0"' in markup
 
 
 def test_point_mark_lowers_styled_points_with_stable_keys(compiler):

@@ -218,6 +218,34 @@ CaptionTextStyle = DesignToken[Typography](
     ),
     value_type=Typography,
 )
+ChartTickTextStyle = DesignToken[Typography](
+    "chart.text.tick",
+    lambda values: Typography(
+        values[BaseFont],
+        values[BaseFontSize] * (0.7 * values[TypeScale]),
+        values[LineSpacing],
+    ),
+    value_type=Typography,
+)
+ChartAxisTitleTextStyle = DesignToken[Typography](
+    "chart.text.axis-title",
+    lambda values: Typography(
+        values[BaseFont],
+        values[BaseFontSize] * (0.8 * values[TypeScale]),
+        values[LineSpacing],
+    ),
+    value_type=Typography,
+)
+ChartLegendTextStyle = DesignToken[Typography](
+    "chart.text.legend",
+    lambda values: values[ChartTickTextStyle],
+    value_type=Typography,
+)
+ChartDataLabelTextStyle = DesignToken[Typography](
+    "chart.text.data-label",
+    lambda values: values[ChartTickTextStyle],
+    value_type=Typography,
+)
 MetricTextStyle = DesignToken[Typography](
     "text.metric",
     lambda values: Typography(
@@ -244,6 +272,14 @@ TextStyle = DesignToken[Typography](
 ForegroundColor = DesignToken[Color](
     "environment.foreground-color",
     lambda values: values[PrimaryColor],
+    value_type=Color,
+)
+ChartAxisColor = DesignToken[Color](
+    "chart.color.axis", lambda values: values[MutedColor], value_type=Color
+)
+ChartGridColor = DesignToken[Color](
+    "chart.color.grid",
+    lambda values: values[MutedColor].mix(values[SurfaceColor], 0.65),
     value_type=Color,
 )
 

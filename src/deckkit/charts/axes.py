@@ -6,7 +6,12 @@ from dataclasses import dataclass
 from ..canvas import CanvasContext, CanvasElement, CanvasText, Line, Stroke
 from ..drawables import Bounds
 from ..geometry import Point
-from ..theme import MutedColor
+from ..theme import (
+    ChartAxisColor,
+    ChartAxisTitleTextStyle,
+    ChartGridColor,
+    ChartTickTextStyle,
+)
 from ..units import Length, pt
 from .context import ResolvedPositionScale
 from .scales import BandScale, LinearScale, nice_ticks
@@ -45,17 +50,19 @@ def required_axis_space(
     if x_axis is not None:
         labels = _tick_labels(x_scale, x_axis)
         bottom = max(
-            (_measure(canvas, label).height for label in labels), default=pt(0)
+            (_measure_tick(canvas, label).height for label in labels), default=pt(0)
         )
         bottom += pt(8)
         if x_axis.title:
-            bottom += _measure(canvas, x_axis.title).height + pt(4)
+            bottom += _measure_title(canvas, x_axis.title).height + pt(4)
     if y_axis is not None:
         labels = _tick_labels(y_scale, y_axis)
-        left = max((_measure(canvas, label).width for label in labels), default=pt(0))
+        left = max(
+            (_measure_tick(canvas, label).width for label in labels), default=pt(0)
+        )
         left += pt(8)
         if y_axis.title:
-            left += _measure(canvas, y_axis.title).height + pt(4)
+            left += _measure_title(canvas, y_axis.title).height + pt(4)
     return bottom, left
 
 
@@ -68,50 +75,74 @@ def lower_axes(
     y_axis: Axis | None,
 ) -> tuple[CanvasElement, ...]:
     result: list[CanvasElement] = []
-    stroke = Stroke(MutedColor, pt(0.75), opacity=0.7)
+    axis_stroke = Stroke(ChartAxisColor, pt(1))
+    grid_stroke = Stroke(ChartGridColor, pt(0.5))
     if x_axis is not None:
         baseline = plot.y + plot.height
         result.append(
-            Line(Point(plot.x, baseline), Point(plot.x + plot.width, baseline), stroke)
+            Line(
+                Point(plot.x, baseline),
+                Point(plot.x + plot.width, baseline),
+                axis_stroke,
+            )
         )
         for value, label in zip(_ticks(x_scale, x_axis), _tick_labels(x_scale, x_axis)):
             x = _position(x_scale, value)
-            if x_axis.grid:
-                result.append(Line(Point(x, plot.y), Point(x, baseline), stroke))
-            result.append(Line(Point(x, baseline), Point(x, baseline + pt(4)), stroke))
+            if x_axis.grid and plot.x < x < plot.x + plot.width:
+                result.append(Line(Point(x, plot.y), Point(x, baseline), grid_stroke))
+            result.append(
+                Line(Point(x, baseline), Point(x, baseline + pt(4)), axis_stroke)
+            )
             result.append(
                 CanvasText(
                     label,
                     Point(x, baseline + pt(6)),
-                    color=MutedColor,
+                    typography=ChartTickTextStyle,
+                    color=ChartAxisColor,
                     horizontal_alignment="center",
                 )
             )
         if x_axis.title:
+            tick_height = max(
+                (
+                    _measure_tick(canvas, label).height
+                    for label in _tick_labels(x_scale, x_axis)
+                ),
+                default=pt(0),
+            )
             result.append(
                 CanvasText(
                     x_axis.title,
-                    Point(plot.x + plot.width / 2, baseline + pt(22)),
-                    color=MutedColor,
+                    Point(
+                        plot.x + plot.width / 2,
+                        baseline + pt(8) + tick_height + pt(4),
+                    ),
+                    typography=ChartAxisTitleTextStyle,
+                    color=ChartAxisColor,
                     horizontal_alignment="center",
                 )
             )
     if y_axis is not None:
         result.append(
-            Line(Point(plot.x, plot.y), Point(plot.x, plot.y + plot.height), stroke)
+            Line(
+                Point(plot.x, plot.y),
+                Point(plot.x, plot.y + plot.height),
+                axis_stroke,
+            )
         )
         for value, label in zip(_ticks(y_scale, y_axis), _tick_labels(y_scale, y_axis)):
             y = _position(y_scale, value)
-            if y_axis.grid:
+            if y_axis.grid and plot.y < y < plot.y + plot.height:
                 result.append(
-                    Line(Point(plot.x, y), Point(plot.x + plot.width, y), stroke)
+                    Line(Point(plot.x, y), Point(plot.x + plot.width, y), grid_stroke)
                 )
-            result.append(Line(Point(plot.x - pt(4), y), Point(plot.x, y), stroke))
+            result.append(Line(Point(plot.x - pt(4), y), Point(plot.x, y), axis_stroke))
             result.append(
                 CanvasText(
                     label,
                     Point(plot.x - pt(6), y),
-                    color=MutedColor,
+                    typography=ChartTickTextStyle,
+                    color=ChartAxisColor,
                     horizontal_alignment="right",
                     vertical_alignment="center",
                 )
@@ -119,7 +150,7 @@ def lower_axes(
         if y_axis.title:
             label_width = max(
                 (
-                    _measure(canvas, label).width
+                    _measure_tick(canvas, label).width
                     for label in _tick_labels(y_scale, y_axis)
                 ),
                 default=pt(0),
@@ -131,10 +162,11 @@ def lower_axes(
                         plot.x
                         - label_width
                         - pt(12)
-                        - _measure(canvas, y_axis.title).height / 2,
+                        - _measure_title(canvas, y_axis.title).height / 2,
                         plot.y + plot.height / 2,
                     ),
-                    color=MutedColor,
+                    typography=ChartAxisTitleTextStyle,
+                    color=ChartAxisColor,
                     horizontal_alignment="center",
                     vertical_alignment="center",
                     rotation=-90,
@@ -160,5 +192,13 @@ def _position(scale: ResolvedPositionScale, value: float | Hashable) -> Length:
     return scale.center(value)
 
 
-def _measure(canvas: CanvasContext, text: str) -> Bounds:
-    return CanvasText(text, Point(pt(0), pt(0))).measured_anchor_bounds(canvas)
+def _measure_tick(canvas: CanvasContext, text: str) -> Bounds:
+    return CanvasText(
+        text, Point(pt(0), pt(0)), typography=ChartTickTextStyle
+    ).measured_anchor_bounds(canvas)
+
+
+def _measure_title(canvas: CanvasContext, text: str) -> Bounds:
+    return CanvasText(
+        text, Point(pt(0), pt(0)), typography=ChartAxisTitleTextStyle
+    ).measured_anchor_bounds(canvas)
