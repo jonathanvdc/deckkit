@@ -230,6 +230,7 @@ def _add_node(slide: Any, node: Drawable, *, name: str | None = None) -> Any:
     elif isinstance(node, DrawableText):
         m = node.metrics
         shape = slide.shapes.add_textbox(Pt(x), Pt(y), Pt(max(w, 1)), Pt(h))
+        shape.rotation = node.rotation
         tf = shape.text_frame
         tf.margin_left = tf.margin_right = tf.margin_top = tf.margin_bottom = 0
         tf.word_wrap = False

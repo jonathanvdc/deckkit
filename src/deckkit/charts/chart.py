@@ -103,6 +103,7 @@ class Chart(CompositeView):
             _ClippedChartElement(element, plot_bounds) for element in elements
         )
         axes = lower_axes(
+            canvas,
             plot_bounds,
             chart_context.x_scale,
             chart_context.y_scale,

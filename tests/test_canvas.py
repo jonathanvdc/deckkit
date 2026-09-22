@@ -141,6 +141,35 @@ def test_canvas_text_measures_aligns_and_exports_natively(compiler, tmp_path):
     assert shape.text == "Axis label"
 
 
+def test_canvas_text_rotates_around_its_center(compiler, tmp_path):
+    from pptx import Presentation
+
+    compiled = compiler.compile_view(
+        Canvas(
+            lambda context, size: (
+                CanvasText(
+                    "Vertical",
+                    _point(50, 50),
+                    horizontal_alignment="center",
+                    vertical_alignment="center",
+                    rotation=-90,
+                ),
+            )
+        ).frame(width=pt(100), height=pt(100))
+    )
+    text = next(
+        node for node in compiled.drawable.walk() if isinstance(node, DrawableText)
+    )
+
+    assert text.rotation == -90
+    assert text.bounds.width.points == pytest.approx(text.content_bounds.height.points)
+    assert 'transform="rotate(-90' in svg.render(compiled.drawable)
+
+    output = tmp_path / "rotated-text.pptx"
+    pptx.render(CompiledDeck.from_views(compiled), output)
+    assert Presentation(output).slides[0].shapes[0].rotation == pytest.approx(270)
+
+
 def test_canvas_bezier_paths_export_natively(compiler, tmp_path):
     compiled = compiler.compile_view(
         Canvas(

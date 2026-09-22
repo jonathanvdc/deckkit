@@ -18,3 +18,4 @@ class DrawableText(Drawable):
     requested_font: Font
     font_size: Length
     metrics: MeasuredText
+    rotation: float = 0.0

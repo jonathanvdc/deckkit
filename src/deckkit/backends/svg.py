@@ -145,6 +145,17 @@ def render(layout: Drawable) -> str:
             SubElement(group, "path", attributes)
         elif isinstance(node, DrawableText):
             m = node.metrics
+            text_attributes = {
+                "{http://www.w3.org/XML/1998/namespace}space": "preserve",
+                "font-family": node.font.family,
+                "font-size": str(node.font_size.points),
+                "font-weight": "bold" if node.font.bold else "normal",
+                "font-style": "italic" if node.font.italic else "normal",
+            }
+            if node.rotation:
+                text_attributes["transform"] = (
+                    f"rotate({node.rotation:g} {x + w / 2:g} {y + h / 2:g})"
+                )
             for i, line in enumerate(m.lines):
                 SubElement(
                     group,
@@ -152,13 +163,7 @@ def render(layout: Drawable) -> str:
                     x=str(x),
                     y=str(y + m.ascent.points + i * m.line_height.points),
                     fill=node.color,
-                    attrib={
-                        "{http://www.w3.org/XML/1998/namespace}space": "preserve",
-                        "font-family": node.font.family,
-                        "font-size": str(node.font_size.points),
-                        "font-weight": "bold" if node.font.bold else "normal",
-                        "font-style": "italic" if node.font.italic else "normal",
-                    },
+                    attrib=text_attributes,
                 ).text = line
         elif isinstance(node, DrawableImage):
             SubElement(

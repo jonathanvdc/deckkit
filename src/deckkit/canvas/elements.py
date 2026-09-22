@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from math import cos, isfinite, pi, sin
 from typing import Literal
 
 from ..drawables import (
@@ -58,6 +59,7 @@ class CanvasText(CanvasElement):
     horizontal_alignment: Literal["left", "center", "right"] = "left"
     vertical_alignment: Literal["top", "center", "bottom"] = "top"
     key: str | None = None
+    rotation: float = 0.0
 
     def __post_init__(self) -> None:
         validate_key(self.key)
@@ -69,6 +71,8 @@ class CanvasText(CanvasElement):
             raise ValueError("Unknown horizontal CanvasText alignment")
         if self.vertical_alignment not in ("top", "center", "bottom"):
             raise ValueError("Unknown vertical CanvasText alignment")
+        if not isfinite(self.rotation):
+            raise ValueError("CanvasText rotation must be finite")
 
     def _measure(self, context: CanvasContext):  # type: ignore[no-untyped-def]
         typography = (
@@ -105,7 +109,7 @@ class CanvasText(CanvasElement):
         return Bounds(self.position.x, self.position.y, pt(0), pt(0))
 
     def measured_anchor_bounds(self, context: CanvasContext) -> Bounds:
-        return self._local_bounds(context)
+        return _rotated_bounds(self._local_bounds(context), self.rotation)
 
     def make_drawable(
         self,
@@ -115,10 +119,11 @@ class CanvasText(CanvasElement):
         metadata: DrawableMetadata,
     ) -> Drawable:
         typography, font, metrics = self._measure(context)
-        bounds = translate_bounds(self._local_bounds(context), origin)
+        content_bounds = translate_bounds(self._local_bounds(context), origin)
+        bounds = _rotated_bounds(content_bounds, self.rotation)
         return DrawableText(
             identity,
-            bounds,
+            content_bounds,
             metadata,
             bounds,
             self.text,
@@ -127,6 +132,7 @@ class CanvasText(CanvasElement):
             typography.font,
             typography.size,
             metrics,
+            self.rotation,
         )
 
 
@@ -243,3 +249,30 @@ class Ellipse(CanvasElement):
             self.stroke.line_cap if self.stroke else "butt",
             self.stroke.line_join if self.stroke else "miter",
         )
+
+
+def _rotated_bounds(bounds: Bounds, rotation: float) -> Bounds:
+    if rotation % 360 == 0:
+        return bounds
+    angle = rotation * pi / 180
+    cosine, sine = cos(angle), sin(angle)
+    center_x = bounds.x + bounds.width / 2
+    center_y = bounds.y + bounds.height / 2
+    corners = (
+        (bounds.x, bounds.y),
+        (bounds.x + bounds.width, bounds.y),
+        (bounds.x + bounds.width, bounds.y + bounds.height),
+        (bounds.x, bounds.y + bounds.height),
+    )
+    rotated = tuple(
+        Point(
+            center_x + (x - center_x) * cosine - (y - center_y) * sine,
+            center_y + (x - center_x) * sine + (y - center_y) * cosine,
+        )
+        for x, y in corners
+    )
+    left = min(point.x for point in rotated)
+    top = min(point.y for point in rotated)
+    right = max(point.x for point in rotated)
+    bottom = max(point.y for point in rotated)
+    return Bounds(left, top, right - left, bottom - top)

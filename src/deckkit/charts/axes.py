@@ -60,6 +60,7 @@ def required_axis_space(
 
 
 def lower_axes(
+    canvas: CanvasContext,
     plot: Bounds,
     x_scale: ResolvedPositionScale,
     y_scale: ResolvedPositionScale,
@@ -116,12 +117,27 @@ def lower_axes(
                 )
             )
         if y_axis.title:
+            label_width = max(
+                (
+                    _measure(canvas, label).width
+                    for label in _tick_labels(y_scale, y_axis)
+                ),
+                default=pt(0),
+            )
             result.append(
                 CanvasText(
                     y_axis.title,
-                    Point(pt(0), plot.y + plot.height / 2),
+                    Point(
+                        plot.x
+                        - label_width
+                        - pt(12)
+                        - _measure(canvas, y_axis.title).height / 2,
+                        plot.y + plot.height / 2,
+                    ),
                     color=MutedColor,
+                    horizontal_alignment="center",
                     vertical_alignment="center",
+                    rotation=-90,
                 )
             )
     return tuple(result)
